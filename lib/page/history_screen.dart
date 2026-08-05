@@ -125,6 +125,12 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
                       children: [
                         Row(
                           children: [
+                            Icon(
+                              Icons.local_shipping,
+                              size: 22,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 expense['truck_no']?.toString() ?? 'Deleted truck',
@@ -151,7 +157,17 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
                         ),
                         const SizedBox(height: 10),
                         Text('Driver Name: ${expense['driver_name'] ?? 'Deleted driver'}'),
-                        Text('Date: ${expense['date']}'),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.calendar_month,
+                              size: 20,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            const SizedBox(width: 6),
+                            Text('Date: ${expense['date']}'),
+                          ],
+                        ),
                         Row(
                           children: [
                             Icon(
