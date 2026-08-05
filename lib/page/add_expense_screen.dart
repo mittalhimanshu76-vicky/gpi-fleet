@@ -12,9 +12,29 @@ class AddExpenseScreen extends StatefulWidget {
 }
 
 class _AddExpenseScreenState extends State<AddExpenseScreen> {
+  static const expenseNames = [
+    'Diesel',
+    'Fastag',
+    'Toll Tax',
+    'Driver Salary',
+    'Advance',
+    'Food',
+    'Hotel',
+    'Tyre Repair',
+    'Puncture',
+    'Engine Oil',
+    'Grease',
+    'Parking',
+    'Loading',
+    'Unloading',
+    'RTO',
+    'Police',
+    'Washing',
+    'Miscellaneous',
+  ];
+
   final _formKey = GlobalKey<FormState>();
   final amountController = TextEditingController();
-  final expenseController = TextEditingController();
   final remarksController = TextEditingController();
   final otherController = TextEditingController();
 
@@ -25,6 +45,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   int? selectedTruckId;
   String paidBy = 'Ankur';
   String paymentMode = 'Cash';
+  String? selectedExpenseName;
   bool isSaving = false;
 
   bool get isEditing => widget.expense != null;
@@ -44,7 +65,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     selectedDriverId = expense['driver_id'] as int?;
     selectedTruckId = expense['truck_id'] as int?;
     amountController.text = expense['amount'].toString();
-    expenseController.text = expense['expense_name'] as String? ?? '';
+    final savedExpenseName = expense['expense_name'] as String? ?? '';
+    if (expenseNames.contains(savedExpenseName)) {
+      selectedExpenseName = savedExpenseName;
+    } else {
+      selectedExpenseName = null;
+    }
     remarksController.text = expense['remarks'] as String? ?? '';
     paymentMode = expense['payment_mode'] as String? ?? 'Cash';
 
@@ -114,7 +140,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       'amount': double.parse(amountController.text.trim()),
       'paid_by': paidBy == 'Other' ? otherController.text.trim() : paidBy,
       'payment_mode': paymentMode,
-      'expense_name': expenseController.text.trim(),
+      'expense_name': selectedExpenseName,
       'remarks': remarksController.text.trim(),
     };
 
@@ -142,7 +168,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       }
 
       amountController.clear();
-      expenseController.clear();
       remarksController.clear();
       otherController.clear();
       setState(() {
@@ -150,6 +175,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         selectedTruckId = null;
         paidBy = 'Ankur';
         paymentMode = 'Cash';
+        selectedExpenseName = null;
         selectedDate = DateTime.now();
       });
     } finally {
@@ -160,7 +186,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   @override
   void dispose() {
     amountController.dispose();
-    expenseController.dispose();
     remarksController.dispose();
     otherController.dispose();
     super.dispose();
@@ -280,15 +305,17 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               onChanged: (value) => setState(() => paymentMode = value!),
             ),
             const SizedBox(height: 15),
-            TextFormField(
-              controller: expenseController,
+            DropdownButtonFormField<String>(
+              value: selectedExpenseName,
               decoration: const InputDecoration(
                 labelText: 'Expense Name',
                 border: OutlineInputBorder(),
               ),
-              validator: (value) => value == null || value.trim().isEmpty
-                  ? 'Enter an expense name'
-                  : null,
+              items: expenseNames
+                  .map((name) => DropdownMenuItem(value: name, child: Text(name)))
+                  .toList(),
+              validator: (value) => value == null ? 'Select an expense name' : null,
+              onChanged: (value) => setState(() => selectedExpenseName = value),
             ),
             const SizedBox(height: 15),
             TextFormField(
