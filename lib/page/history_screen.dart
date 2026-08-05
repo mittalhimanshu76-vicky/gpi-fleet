@@ -12,6 +12,14 @@ class ExpenseHistoryScreen extends StatefulWidget {
 
 class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
   List<Map<String, dynamic>> expenses = [];
+  String searchText = '';
+  final searchController = TextEditingController();
+  String selectedTruck = 'All Trucks';
+  String appliedTruck = 'All Trucks';
+  DateTime? selectedFromDate;
+  DateTime? selectedToDate;
+  DateTime? appliedFromDate;
+  DateTime? appliedToDate;
 
   @override
   void initState() {
@@ -61,6 +69,67 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
     );
   }
 
+  Future<void> pickFromDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: selectedFromDate ?? DateTime.now(),
+      firstDate: DateTime(2023),
+      lastDate: DateTime(2035),
+    );
+    if (picked != null) setState(() => selectedFromDate = picked);
+  }
+
+  Future<void> pickToDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: selectedToDate ?? DateTime.now(),
+      firstDate: DateTime(2023),
+      lastDate: DateTime(2035),
+    );
+    if (picked != null) setState(() => selectedToDate = picked);
+  }
+
+  void applyFilters() {
+    setState(() {
+      appliedTruck = selectedTruck;
+      appliedFromDate = selectedFromDate;
+      appliedToDate = selectedToDate;
+    });
+  }
+
+  void clearFilters() {
+    searchController.clear();
+    setState(() {
+      searchText = '';
+      selectedTruck = 'All Trucks';
+      appliedTruck = 'All Trucks';
+      selectedFromDate = null;
+      selectedToDate = null;
+      appliedFromDate = null;
+      appliedToDate = null;
+    });
+  }
+
+  String formatDate(DateTime? date, String label) {
+    if (date == null) return label;
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '${date.year}-$month-$day';
+  }
+
+  DateTime? readExpenseDate(String value) {
+    final date = DateTime.tryParse(value);
+    if (date != null) return DateTime(date.year, date.month, date.day);
+
+    final parts = value.split('/');
+    if (parts.length != 3) return null;
+    final day = int.tryParse(parts[0]);
+    final month = int.tryParse(parts[1]);
+    final year = int.tryParse(parts[2]);
+    if (day == null || month == null || year == null) return null;
+    return DateTime(year, month, day);
+  }
+
   IconData expenseIcon(String expenseName) {
     switch (expenseName) {
       case 'Diesel':
@@ -104,15 +173,121 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
   }
 
   @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final search = searchText.trim().toLowerCase();
+    final truckNumbers = expenses
+        .map((expense) => expense['truck_no']?.toString() ?? '')
+        .where((truck) => truck.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+    final filteredExpenses = expenses.where((expense) {
+      final truckNumber = expense['truck_no']?.toString().toLowerCase() ?? '';
+      final driverName = expense['driver_name']?.toString().toLowerCase() ?? '';
+      final expenseName = expense['expense_name']?.toString().toLowerCase() ?? '';
+      final matchesSearch = search.isEmpty ||
+          truckNumber.contains(search) ||
+          driverName.contains(search) ||
+          expenseName.contains(search);
+      final matchesTruck = appliedTruck == 'All Trucks' ||
+          expense['truck_no']?.toString() == appliedTruck;
+      final expenseDate = readExpenseDate(expense['date']?.toString() ?? '');
+      final matchesFromDate = appliedFromDate == null ||
+          (expenseDate != null && !expenseDate.isBefore(appliedFromDate!));
+      final matchesToDate = appliedToDate == null ||
+          (expenseDate != null && !expenseDate.isAfter(appliedToDate!));
+      return matchesSearch && matchesTruck && matchesFromDate && matchesToDate;
+    }).toList();
+
     return Scaffold(
       appBar: AppBar(title: const Text('Expense History')),
-      body: expenses.isEmpty
-          ? const Center(child: Text('No Expenses Found'))
-          : ListView.builder(
-              itemCount: expenses.length,
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(10),
+            child: TextField(
+              controller: searchController,
+              decoration: const InputDecoration(
+                labelText: 'Search expenses',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (value) => setState(() => searchText = value),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: DropdownButtonFormField<String>(
+              value: selectedTruck,
+              decoration: const InputDecoration(
+                labelText: 'Truck',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                const DropdownMenuItem(value: 'All Trucks', child: Text('All Trucks')),
+                ...truckNumbers.map(
+                  (truck) => DropdownMenuItem(value: truck, child: Text(truck)),
+                ),
+              ],
+              onChanged: (value) => setState(() => selectedTruck = value!),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: pickFromDate,
+                    icon: const Icon(Icons.calendar_month),
+                    label: Text(formatDate(selectedFromDate, 'From Date')),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: pickToDate,
+                    icon: const Icon(Icons.calendar_month),
+                    label: Text(formatDate(selectedToDate, 'To Date')),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: applyFilters,
+                    child: const Text('Apply Filter'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: clearFilters,
+                    child: const Text('Clear Filter'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 5),
+          Expanded(
+            child: filteredExpenses.isEmpty
+                ? const Center(child: Text('No expenses found.'))
+                : ListView.builder(
+              itemCount: filteredExpenses.length,
               itemBuilder: (context, index) {
-                final expense = expenses[index];
+                final expense = filteredExpenses[index];
                 final remarks = (expense['remarks'] as String? ?? '').trim();
                 final expenseName = expense['expense_name'] as String? ?? '';
 
@@ -200,6 +375,9 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
                 );
               },
             ),
+          ),
+        ],
+      ),
     );
   }
 }
