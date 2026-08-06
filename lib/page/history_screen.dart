@@ -193,84 +193,46 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Text('🚚', style: TextStyle(fontSize: 20)),
-                    SizedBox(width: 8),
-                    Text(
-                      'Truck',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+            child: DropdownButtonFormField<String>(
+              value: selectedTruck,
+              decoration: const InputDecoration(
+                hintText: 'Select Truck',
+                prefixIcon: Icon(Icons.local_shipping),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(12)),
                 ),
-                const SizedBox(height: 10),
-                DropdownButtonFormField<String>(
-                  value: selectedTruck,
-                  decoration: const InputDecoration(
-                    hintText: 'Select Truck',
-                    floatingLabelBehavior: FloatingLabelBehavior.never,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(12)),
-                    ),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 18,
-                    ),
-                  ),
-                  items: [
-                    const DropdownMenuItem(value: 'All Trucks', child: Text('All Trucks')),
-                    ...truckNumbers.map(
-                      (truck) => DropdownMenuItem(value: truck, child: Text(truck)),
-                    ),
-                  ],
-                  onChanged: (value) => setState(() => selectedTruck = value!),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 18,
+                ),
+              ),
+              items: [
+                const DropdownMenuItem(value: 'All Trucks', child: Text('All Trucks')),
+                ...truckNumbers.map(
+                  (truck) => DropdownMenuItem(value: truck, child: Text(truck)),
                 ),
               ],
+              onChanged: (value) => setState(() => selectedTruck = value!),
             ),
           ),
           Padding(
             padding: const EdgeInsets.all(10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                const Row(
-                  children: [
-                    Text('📅', style: TextStyle(fontSize: 20)),
-                    SizedBox(width: 8),
-                    Text(
-                      'Date Range',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: pickFromDate,
+                    icon: const Icon(Icons.calendar_month),
+                    label: Text(formatDate(selectedFromDate, 'From Date')),
+                  ),
                 ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: pickFromDate,
-                        icon: const Icon(Icons.calendar_month),
-                        label: Text(formatDate(selectedFromDate, 'From Date')),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: pickToDate,
-                        icon: const Icon(Icons.calendar_month),
-                        label: Text(formatDate(selectedToDate, 'To Date')),
-                      ),
-                    ),
-                  ],
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: pickToDate,
+                    icon: const Icon(Icons.calendar_month),
+                    label: Text(formatDate(selectedToDate, 'To Date')),
+                  ),
                 ),
               ],
             ),
