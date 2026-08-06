@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../database/database_helper.dart';
-import '../services/export_service.dart';
+import '../services/pdf_service.dart';
 import 'add_expense_screen.dart';
 
 class ExpenseHistoryScreen extends StatefulWidget {
@@ -64,9 +64,9 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
     await DatabaseHelper.instance.deleteExpense(id);
     await loadExpenses();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Expense deleted')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Expense deleted')));
   }
 
   Future<void> pickFromDate() async {
@@ -172,19 +172,23 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final truckNumbers = expenses
-        .map((expense) => expense['truck_no']?.toString() ?? '')
-        .where((truck) => truck.isNotEmpty)
-        .toSet()
-        .toList()
-      ..sort();
+    final truckNumbers =
+        expenses
+            .map((expense) => expense['truck_no']?.toString() ?? '')
+            .where((truck) => truck.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
     final filteredExpenses = expenses.where((expense) {
-      final matchesTruck = appliedTruck == 'All Trucks' ||
+      final matchesTruck =
+          appliedTruck == 'All Trucks' ||
           expense['truck_no']?.toString() == appliedTruck;
       final expenseDate = readExpenseDate(expense['date']?.toString() ?? '');
-      final matchesFromDate = appliedFromDate == null ||
+      final matchesFromDate =
+          appliedFromDate == null ||
           (expenseDate != null && !expenseDate.isBefore(appliedFromDate!));
-      final matchesToDate = appliedToDate == null ||
+      final matchesToDate =
+          appliedToDate == null ||
           (expenseDate != null && !expenseDate.isAfter(appliedToDate!));
       return matchesTruck && matchesFromDate && matchesToDate;
     }).toList();
@@ -209,7 +213,10 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
                 ),
               ),
               items: [
-                const DropdownMenuItem(value: 'All Trucks', child: Text('All Trucks')),
+                const DropdownMenuItem(
+                  value: 'All Trucks',
+                  child: Text('All Trucks'),
+                ),
                 ...truckNumbers.map(
                   (truck) => DropdownMenuItem(value: truck, child: Text(truck)),
                 ),
@@ -276,96 +283,113 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
             child: filteredExpenses.isEmpty
                 ? const Center(child: Text('No expenses found.'))
                 : ListView.builder(
-              itemCount: filteredExpenses.length,
-              itemBuilder: (context, index) {
-                final expense = filteredExpenses[index];
-                final remarks = (expense['remarks'] as String? ?? '').trim();
-                final expenseName = expense['expense_name'] as String? ?? '';
+                    itemCount: filteredExpenses.length,
+                    itemBuilder: (context, index) {
+                      final expense = filteredExpenses[index];
+                      final remarks = (expense['remarks'] as String? ?? '')
+                          .trim();
+                      final expenseName =
+                          expense['expense_name'] as String? ?? '';
 
-                return Card(
-                  margin: const EdgeInsets.all(10),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.local_shipping,
-                              size: 22,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                expense['truck_no']?.toString() ?? 'Deleted truck',
+                      return Card(
+                        margin: const EdgeInsets.all(10),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.local_shipping,
+                                    size: 22,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      expense['truck_no']?.toString() ??
+                                          'Deleted truck',
+                                      style: const TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  PopupMenuButton<String>(
+                                    onSelected: (action) {
+                                      if (action == 'edit') {
+                                        editExpense(expense);
+                                      } else {
+                                        deleteExpense(expense['id'] as int);
+                                      }
+                                    },
+                                    itemBuilder: (context) => const [
+                                      PopupMenuItem(
+                                        value: 'edit',
+                                        child: Text('Edit'),
+                                      ),
+                                      PopupMenuItem(
+                                        value: 'delete',
+                                        child: Text('Delete'),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                'Driver Name: ${expense['driver_name'] ?? 'Deleted driver'}',
+                              ),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.calendar_month,
+                                    size: 20,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text('Date: ${expense['date']}'),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  Icon(
+                                    expenseIcon(expenseName),
+                                    size: 18,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text('Expense Name: $expenseName'),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                '₹${expense['amount']}',
                                 style: const TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                            ),
-                            PopupMenuButton<String>(
-                              onSelected: (action) {
-                                if (action == 'edit') {
-                                  editExpense(expense);
-                                } else {
-                                  deleteExpense(expense['id'] as int);
-                                }
-                              },
-                              itemBuilder: (context) => const [
-                                PopupMenuItem(value: 'edit', child: Text('Edit')),
-                                PopupMenuItem(value: 'delete', child: Text('Delete')),
+                              const SizedBox(height: 10),
+                              Text('Paid By: ${expense['paid_by']}'),
+                              Text('Payment Mode: ${expense['payment_mode']}'),
+                              if (remarks.isNotEmpty) ...[
+                                const SizedBox(height: 10),
+                                Text('Remarks: $remarks'),
                               ],
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Text('Driver Name: ${expense['driver_name'] ?? 'Deleted driver'}'),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.calendar_month,
-                              size: 20,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                            const SizedBox(width: 6),
-                            Text('Date: ${expense['date']}'),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            Icon(
-                              expenseIcon(expenseName),
-                              size: 18,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                            const SizedBox(width: 6),
-                            Text('Expense Name: $expenseName'),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          '₹${expense['amount']}',
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 10),
-                        Text('Paid By: ${expense['paid_by']}'),
-                        Text('Payment Mode: ${expense['payment_mode']}'),
-                        if (remarks.isNotEmpty) ...[
-                          const SizedBox(height: 10),
-                          Text('Remarks: $remarks'),
-                        ],
-                      ],
-                    ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
         ],
       ),
@@ -373,7 +397,7 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
   }
 
   Future<void> showExportOptions() async {
-    final selected = await showModalBottomSheet<ExportFormat>(
+    final selected = await showModalBottomSheet<String>(
       context: context,
       builder: (context) {
         return SafeArea(
@@ -383,12 +407,7 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
               ListTile(
                 leading: const Icon(Icons.picture_as_pdf),
                 title: const Text('Export as PDF'),
-                onTap: () => Navigator.pop(context, ExportFormat.pdf),
-              ),
-              ListTile(
-                leading: const Icon(Icons.grid_on),
-                title: const Text('Export as Excel'),
-                onTap: () => Navigator.pop(context, ExportFormat.excel),
+                onTap: () => Navigator.pop(context, 'pdf'),
               ),
             ],
           ),
@@ -396,24 +415,30 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
       },
     );
 
-    if (selected == null) return;
-    await exportHistory(selected);
+    if (selected != 'pdf') return;
+    await exportHistory();
   }
 
-  Future<void> exportHistory(ExportFormat format) async {
+  Future<void> exportHistory() async {
     setState(() => isExporting = true);
     try {
       final filteredExpenses = _filteredExpensesList();
-      final path = await ExportService.instance.exportHistory(filteredExpenses, format);
+      final path = await PdfService.generateExpenseReport(
+        expenses: filteredExpenses,
+        truckFilter: appliedTruck,
+        fromDate: appliedFromDate,
+        toDate: appliedToDate,
+      );
       if (!mounted) return;
+      await PdfService.openPdfPreview(path);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Exported to $path')),
+        const SnackBar(content: Text('PDF generated and opened for preview')),
       );
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Export failed')), 
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('PDF generation failed')));
     } finally {
       if (mounted) setState(() => isExporting = false);
     }
@@ -421,12 +446,15 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
 
   List<Map<String, dynamic>> _filteredExpensesList() {
     return expenses.where((expense) {
-      final matchesTruck = appliedTruck == 'All Trucks' ||
+      final matchesTruck =
+          appliedTruck == 'All Trucks' ||
           expense['truck_no']?.toString() == appliedTruck;
       final expenseDate = readExpenseDate(expense['date']?.toString() ?? '');
-      final matchesFromDate = appliedFromDate == null ||
+      final matchesFromDate =
+          appliedFromDate == null ||
           (expenseDate != null && !expenseDate.isBefore(appliedFromDate!));
-      final matchesToDate = appliedToDate == null ||
+      final matchesToDate =
+          appliedToDate == null ||
           (expenseDate != null && !expenseDate.isAfter(appliedToDate!));
       return matchesTruck && matchesFromDate && matchesToDate;
     }).toList();

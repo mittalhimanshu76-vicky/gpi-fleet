@@ -158,7 +158,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            isEditing ? 'Expense updated successfully' : 'Expense saved successfully',
+            isEditing
+                ? 'Expense updated successfully'
+                : 'Expense saved successfully',
           ),
         ),
       );
@@ -217,32 +219,36 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
             ),
             const SizedBox(height: 15),
             DropdownButtonFormField<int>(
-              value: selectedDriverId,
+              initialValue: selectedDriverId,
               decoration: const InputDecoration(
                 labelText: 'Driver',
                 border: OutlineInputBorder(),
               ),
               items: drivers
-                  .map((driver) => DropdownMenuItem<int>(
-                        value: driver['id'] as int,
-                        child: Text(driver['name'] as String),
-                      ))
+                  .map(
+                    (driver) => DropdownMenuItem<int>(
+                      value: driver['id'] as int,
+                      child: Text(driver['name'] as String),
+                    ),
+                  )
                   .toList(),
               validator: (value) => value == null ? 'Select a driver' : null,
               onChanged: (value) => setState(() => selectedDriverId = value),
             ),
             const SizedBox(height: 15),
             DropdownButtonFormField<int>(
-              value: selectedTruckId,
+              initialValue: selectedTruckId,
               decoration: const InputDecoration(
                 labelText: 'Truck Number',
                 border: OutlineInputBorder(),
               ),
               items: trucks
-                  .map((truck) => DropdownMenuItem<int>(
-                        value: truck['id'] as int,
-                        child: Text(truck['truck_no'] as String),
-                      ))
+                  .map(
+                    (truck) => DropdownMenuItem<int>(
+                      value: truck['id'] as int,
+                      child: Text(truck['truck_no'] as String),
+                    ),
+                  )
                   .toList(),
               validator: (value) => value == null ? 'Select a truck' : null,
               onChanged: (value) => setState(() => selectedTruckId = value),
@@ -250,7 +256,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
             const SizedBox(height: 15),
             TextFormField(
               controller: amountController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: const InputDecoration(
                 labelText: 'Amount',
                 border: OutlineInputBorder(),
@@ -258,13 +266,14 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               ),
               validator: (value) {
                 final amount = double.tryParse(value?.trim() ?? '');
-                if (amount == null || amount <= 0) return 'Enter a valid amount';
+                if (amount == null || amount <= 0)
+                  return 'Enter a valid amount';
                 return null;
               },
             ),
             const SizedBox(height: 15),
             DropdownButtonFormField<String>(
-              value: paidBy,
+              initialValue: paidBy,
               decoration: const InputDecoration(
                 labelText: 'Paid By',
                 border: OutlineInputBorder(),
@@ -292,7 +301,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
             ],
             const SizedBox(height: 15),
             DropdownButtonFormField<String>(
-              value: paymentMode,
+              initialValue: paymentMode,
               decoration: const InputDecoration(
                 labelText: 'Payment Mode',
                 border: OutlineInputBorder(),
@@ -300,21 +309,27 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               items: const [
                 DropdownMenuItem(value: 'Cash', child: Text('Cash')),
                 DropdownMenuItem(value: 'UPI', child: Text('UPI')),
-                DropdownMenuItem(value: 'Bank Transfer', child: Text('Bank Transfer')),
+                DropdownMenuItem(
+                  value: 'Bank Transfer',
+                  child: Text('Bank Transfer'),
+                ),
               ],
               onChanged: (value) => setState(() => paymentMode = value!),
             ),
             const SizedBox(height: 15),
             DropdownButtonFormField<String>(
-              value: selectedExpenseName,
+              initialValue: selectedExpenseName,
               decoration: const InputDecoration(
                 labelText: 'Expense Name',
                 border: OutlineInputBorder(),
               ),
               items: expenseNames
-                  .map((name) => DropdownMenuItem(value: name, child: Text(name)))
+                  .map(
+                    (name) => DropdownMenuItem(value: name, child: Text(name)),
+                  )
                   .toList(),
-              validator: (value) => value == null ? 'Select an expense name' : null,
+              validator: (value) =>
+                  value == null ? 'Select an expense name' : null,
               onChanged: (value) => setState(() => selectedExpenseName = value),
             ),
             const SizedBox(height: 15),
@@ -336,9 +351,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                   isSaving
                       ? 'SAVING...'
                       : isEditing
-                          ? 'UPDATE EXPENSE'
-                          : 'SAVE EXPENSE',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ? 'UPDATE EXPENSE'
+                      : 'SAVE EXPENSE',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
