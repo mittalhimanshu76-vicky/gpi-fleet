@@ -12,8 +12,6 @@ class ExpenseHistoryScreen extends StatefulWidget {
 
 class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
   List<Map<String, dynamic>> expenses = [];
-  String searchText = '';
-  final searchController = TextEditingController();
   String selectedTruck = 'All Trucks';
   String appliedTruck = 'All Trucks';
   DateTime? selectedFromDate;
@@ -98,9 +96,7 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
   }
 
   void clearFilters() {
-    searchController.clear();
     setState(() {
-      searchText = '';
       selectedTruck = 'All Trucks';
       appliedTruck = 'All Trucks';
       selectedFromDate = null;
@@ -173,14 +169,7 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
   }
 
   @override
-  void dispose() {
-    searchController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final search = searchText.trim().toLowerCase();
     final truckNumbers = expenses
         .map((expense) => expense['truck_no']?.toString() ?? '')
         .where((truck) => truck.isNotEmpty)
@@ -188,13 +177,6 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
         .toList()
       ..sort();
     final filteredExpenses = expenses.where((expense) {
-      final truckNumber = expense['truck_no']?.toString().toLowerCase() ?? '';
-      final driverName = expense['driver_name']?.toString().toLowerCase() ?? '';
-      final expenseName = expense['expense_name']?.toString().toLowerCase() ?? '';
-      final matchesSearch = search.isEmpty ||
-          truckNumber.contains(search) ||
-          driverName.contains(search) ||
-          expenseName.contains(search);
       final matchesTruck = appliedTruck == 'All Trucks' ||
           expense['truck_no']?.toString() == appliedTruck;
       final expenseDate = readExpenseDate(expense['date']?.toString() ?? '');
@@ -202,7 +184,7 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
           (expenseDate != null && !expenseDate.isBefore(appliedFromDate!));
       final matchesToDate = appliedToDate == null ||
           (expenseDate != null && !expenseDate.isAfter(appliedToDate!));
-      return matchesSearch && matchesTruck && matchesFromDate && matchesToDate;
+      return matchesTruck && matchesFromDate && matchesToDate;
     }).toList();
 
     return Scaffold(
@@ -210,52 +192,85 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(10),
-            child: TextField(
-              controller: searchController,
-              decoration: const InputDecoration(
-                labelText: 'Search expenses',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-              ),
-              onChanged: (value) => setState(() => searchText = value),
-            ),
-          ),
-          Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: DropdownButtonFormField<String>(
-              value: selectedTruck,
-              decoration: const InputDecoration(
-                labelText: 'Truck',
-                border: OutlineInputBorder(),
-              ),
-              items: [
-                const DropdownMenuItem(value: 'All Trucks', child: Text('All Trucks')),
-                ...truckNumbers.map(
-                  (truck) => DropdownMenuItem(value: truck, child: Text(truck)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Text('🚚', style: TextStyle(fontSize: 20)),
+                    SizedBox(width: 8),
+                    Text(
+                      'Truck',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  value: selectedTruck,
+                  decoration: const InputDecoration(
+                    hintText: 'Select Truck',
+                    floatingLabelBehavior: FloatingLabelBehavior.never,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 18,
+                    ),
+                  ),
+                  items: [
+                    const DropdownMenuItem(value: 'All Trucks', child: Text('All Trucks')),
+                    ...truckNumbers.map(
+                      (truck) => DropdownMenuItem(value: truck, child: Text(truck)),
+                    ),
+                  ],
+                  onChanged: (value) => setState(() => selectedTruck = value!),
                 ),
               ],
-              onChanged: (value) => setState(() => selectedTruck = value!),
             ),
           ),
           Padding(
             padding: const EdgeInsets.all(10),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: pickFromDate,
-                    icon: const Icon(Icons.calendar_month),
-                    label: Text(formatDate(selectedFromDate, 'From Date')),
-                  ),
+                const Row(
+                  children: [
+                    Text('📅', style: TextStyle(fontSize: 20)),
+                    SizedBox(width: 8),
+                    Text(
+                      'Date Range',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: pickToDate,
-                    icon: const Icon(Icons.calendar_month),
-                    label: Text(formatDate(selectedToDate, 'To Date')),
-                  ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: pickFromDate,
+                        icon: const Icon(Icons.calendar_month),
+                        label: Text(formatDate(selectedFromDate, 'From Date')),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: pickToDate,
+                        icon: const Icon(Icons.calendar_month),
+                        label: Text(formatDate(selectedToDate, 'To Date')),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
