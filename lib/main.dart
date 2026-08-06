@@ -16,9 +16,7 @@ class GPIFleetApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         primaryColor: const Color(0xFF1E8E3E),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1E8E3E),
-        ),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1E8E3E)),
       ),
       home: const HomeScreen(),
     );

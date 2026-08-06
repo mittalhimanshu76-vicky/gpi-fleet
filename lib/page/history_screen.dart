@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../database/database_helper.dart';
+import '../services/export_service.dart';
 import 'add_expense_screen.dart';
 
 class ExpenseHistoryScreen extends StatefulWidget {
@@ -18,6 +19,7 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
   DateTime? selectedToDate;
   DateTime? appliedFromDate;
   DateTime? appliedToDate;
+  bool isExporting = false;
 
   @override
   void initState() {
@@ -258,6 +260,18 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
             ),
           ),
           const SizedBox(height: 5),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: ElevatedButton.icon(
+              onPressed: isExporting ? null : showExportOptions,
+              icon: const Icon(Icons.download),
+              label: const Text('Export'),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size.fromHeight(50),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
           Expanded(
             child: filteredExpenses.isEmpty
                 ? const Center(child: Text('No expenses found.'))
@@ -356,5 +370,65 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> showExportOptions() async {
+    final selected = await showModalBottomSheet<ExportFormat>(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.picture_as_pdf),
+                title: const Text('Export as PDF'),
+                onTap: () => Navigator.pop(context, ExportFormat.pdf),
+              ),
+              ListTile(
+                leading: const Icon(Icons.grid_on),
+                title: const Text('Export as Excel'),
+                onTap: () => Navigator.pop(context, ExportFormat.excel),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (selected == null) return;
+    await exportHistory(selected);
+  }
+
+  Future<void> exportHistory(ExportFormat format) async {
+    setState(() => isExporting = true);
+    try {
+      final filteredExpenses = _filteredExpensesList();
+      final path = await ExportService.instance.exportHistory(filteredExpenses, format);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Exported to $path')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Export failed')), 
+      );
+    } finally {
+      if (mounted) setState(() => isExporting = false);
+    }
+  }
+
+  List<Map<String, dynamic>> _filteredExpensesList() {
+    return expenses.where((expense) {
+      final matchesTruck = appliedTruck == 'All Trucks' ||
+          expense['truck_no']?.toString() == appliedTruck;
+      final expenseDate = readExpenseDate(expense['date']?.toString() ?? '');
+      final matchesFromDate = appliedFromDate == null ||
+          (expenseDate != null && !expenseDate.isBefore(appliedFromDate!));
+      final matchesToDate = appliedToDate == null ||
+          (expenseDate != null && !expenseDate.isAfter(appliedToDate!));
+      return matchesTruck && matchesFromDate && matchesToDate;
+    }).toList();
   }
 }
