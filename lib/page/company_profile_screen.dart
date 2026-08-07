@@ -15,14 +15,17 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _addressController;
-  late TextEditingController _gstController;
-  late TextEditingController _panController;
+  late TextEditingController _cityController;
+  late TextEditingController _stateController;
+  late TextEditingController _pincodeController;
   late TextEditingController _phoneController;
   late TextEditingController _emailController;
   late TextEditingController _websiteController;
-  late TextEditingController _notesController;
+  late TextEditingController _gstController;
+  late TextEditingController _panController;
   String? _logoPath;
   String? _signaturePath;
+  int? _profileId;
   bool _isLoading = true;
 
   @override
@@ -32,16 +35,19 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
   }
 
   Future<void> _loadProfile() async {
-    final profile = await CompanyService.instance.getProfile();
+    final profile = await CompanyService.instance.getCompany();
     setState(() {
-      _nameController = TextEditingController(text: profile.name);
+      _profileId = profile.id;
+      _nameController = TextEditingController(text: profile.companyName);
       _addressController = TextEditingController(text: profile.address ?? '');
-      _gstController = TextEditingController(text: profile.gstNumber ?? '');
-      _panController = TextEditingController(text: profile.panNumber ?? '');
-      _phoneController = TextEditingController(text: profile.phoneNumber ?? '');
+      _cityController = TextEditingController(text: profile.city ?? '');
+      _stateController = TextEditingController(text: profile.state ?? '');
+      _pincodeController = TextEditingController(text: profile.pincode ?? '');
+      _phoneController = TextEditingController(text: profile.phone ?? '');
       _emailController = TextEditingController(text: profile.email ?? '');
       _websiteController = TextEditingController(text: profile.website ?? '');
-      _notesController = TextEditingController(text: profile.notes ?? '');
+      _gstController = TextEditingController(text: profile.gstNumber ?? '');
+      _panController = TextEditingController(text: profile.panNumber ?? '');
       _logoPath = profile.logoPath;
       _signaturePath = profile.signaturePath;
       _isLoading = false;
@@ -52,12 +58,14 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
   void dispose() {
     _nameController.dispose();
     _addressController.dispose();
-    _gstController.dispose();
-    _panController.dispose();
+    _cityController.dispose();
+    _stateController.dispose();
+    _pincodeController.dispose();
     _phoneController.dispose();
     _emailController.dispose();
     _websiteController.dispose();
-    _notesController.dispose();
+    _gstController.dispose();
+    _panController.dispose();
     super.dispose();
   }
 
@@ -79,19 +87,27 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final profile = CompanyProfile(
-      name: _nameController.text.trim(),
+      id: _profileId,
+      companyName: _nameController.text.trim(),
       address: _addressController.text.trim(),
-      gstNumber: _gstController.text.trim(),
-      panNumber: _panController.text.trim(),
-      phoneNumber: _phoneController.text.trim(),
+      city: _cityController.text.trim(),
+      state: _stateController.text.trim(),
+      pincode: _pincodeController.text.trim(),
+      phone: _phoneController.text.trim(),
       email: _emailController.text.trim(),
       website: _websiteController.text.trim(),
-      notes: _notesController.text.trim(),
+      gstNumber: _gstController.text.trim(),
+      panNumber: _panController.text.trim(),
       logoPath: _logoPath,
       signaturePath: _signaturePath,
     );
 
-    await CompanyService.instance.saveProfile(profile);
+    if (_profileId == null) {
+      await CompanyService.instance.saveCompany(profile);
+    } else {
+      await CompanyService.instance.updateCompany(profile);
+    }
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Company profile saved successfully')),
@@ -110,7 +126,7 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
       appBar: AppBar(
         title: const Text('Company Profile'),
         actions: [
-          IconButton(onPressed: _save, icon: const Icon(Icons.save)),
+          IconButton(onPressed: _save, icon: const Icon(Icons.check)),
         ],
       ),
       body: SingleChildScrollView(
@@ -120,7 +136,7 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSectionTitle('Basic Information'),
+              _buildSectionHeader('Company Information'),
               TextFormField(
                 controller: _nameController,
                 decoration: const InputDecoration(
@@ -139,8 +155,69 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
                 ),
                 maxLines: 2,
               ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _cityController,
+                      decoration: const InputDecoration(
+                        labelText: 'City',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _stateController,
+                      decoration: const InputDecoration(
+                        labelText: 'State',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _pincodeController,
+                decoration: const InputDecoration(
+                  labelText: 'Pincode',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+              ),
               const SizedBox(height: 24),
-              _buildSectionTitle('Tax Details'),
+              _buildSectionHeader('Contact Information'),
+              TextFormField(
+                controller: _phoneController,
+                decoration: const InputDecoration(
+                  labelText: 'Phone',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _emailController,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.emailAddress,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _websiteController,
+                decoration: const InputDecoration(
+                  labelText: 'Website',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.url,
+              ),
+              const SizedBox(height: 24),
+              _buildSectionHeader('Business Information'),
               Row(
                 children: [
                   Expanded(
@@ -165,35 +242,7 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
                 ],
               ),
               const SizedBox(height: 24),
-              _buildSectionTitle('Contact Details'),
-              TextFormField(
-                controller: _phoneController,
-                decoration: const InputDecoration(
-                  labelText: 'Phone Number',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.phone,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _emailController,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _websiteController,
-                decoration: const InputDecoration(
-                  labelText: 'Website',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.url,
-              ),
-              const SizedBox(height: 24),
-              _buildSectionTitle('Logos & Media'),
+              _buildSectionHeader('Branding'),
               Row(
                 children: [
                   Expanded(
@@ -213,23 +262,16 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
-              _buildSectionTitle('Others'),
-              TextFormField(
-                controller: _notesController,
-                decoration: const InputDecoration(
-                  labelText: 'Notes',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 3,
-              ),
               const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: 55,
                 child: ElevatedButton(
                   onPressed: _save,
-                  child: const Text('SAVE PROFILE'),
+                  child: const Text(
+                    'SAVE COMPANY PROFILE',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
                 ),
               ),
             ],
@@ -239,13 +281,13 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
+  Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Text(
         title,
         style: TextStyle(
-          fontSize: 16,
+          fontSize: 18,
           fontWeight: FontWeight.bold,
           color: Theme.of(context).colorScheme.primary,
         ),
@@ -262,31 +304,35 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
         GestureDetector(
           onTap: onTap,
           child: Container(
-            height: 100,
+            height: 120,
             width: double.infinity,
             decoration: BoxDecoration(
               border: Border.all(color: Colors.grey.shade400),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(12),
               color: Colors.grey.shade50,
             ),
             child: imagePath != null
                 ? ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(12),
                     child: Image.file(File(imagePath), fit: BoxFit.contain),
                   )
-                : const Icon(Icons.add_a_photo, color: Colors.grey),
+                : const Icon(Icons.add_a_photo_outlined, color: Colors.grey, size: 40),
           ),
         ),
         if (imagePath != null)
-          TextButton(
-            onPressed: () => setState(() {
-              if (label == 'Company Logo') {
-                _logoPath = null;
-              } else {
-                _signaturePath = null;
-              }
-            }),
-            child: const Text('Remove', style: TextStyle(color: Colors.red, fontSize: 12)),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () => setState(() {
+                if (label == 'Company Logo') {
+                  _logoPath = null;
+                } else {
+                  _signaturePath = null;
+                }
+              }),
+              icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
+              label: const Text('Remove', style: TextStyle(color: Colors.red, fontSize: 12)),
+            ),
           ),
       ],
     );

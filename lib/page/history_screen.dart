@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:share_plus/share_plus.dart';
+
 
 import '../database/database_helper.dart';
 import '../services/excel_service.dart';
 import '../services/pdf_service.dart';
 import 'add_expense_screen.dart';
-
+import '../services/share_service.dart';
 class ExpenseHistoryScreen extends StatefulWidget {
   const ExpenseHistoryScreen({super.key});
 
@@ -189,9 +189,8 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
           toDate: appliedToDate,
         );
         if (pdfPath != null && mounted) {
-          await SharePlus.instance.share(
-            ShareParams(files: [XFile(pdfPath)]),
-          );
+          await ShareService.shareFile(pdfPath);
+
         } else if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Unable to export PDF file.')),
@@ -205,9 +204,8 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
           toDate: appliedToDate,
         );
         if (excelPath != null && mounted) {
-          await SharePlus.instance.share(
-            ShareParams(files: [XFile(excelPath)]),
-          );
+          await ShareService.shareFile(excelPath);
+
         } else if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Unable to export Excel file.')),

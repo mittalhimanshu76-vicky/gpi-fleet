@@ -135,7 +135,7 @@ class _AddEditFuelScreenState extends State<AddEditFuelScreen> {
               child: Column(
                 children: [
                   DropdownButtonFormField<int>(
-                    value: _selectedTruckId,
+                    initialValue: _selectedTruckId,
                     decoration: const InputDecoration(
                       labelText: 'Truck *',
                       border: OutlineInputBorder(),
@@ -233,7 +233,7 @@ class _AddEditFuelScreenState extends State<AddEditFuelScreen> {
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: _paymentMode,
+                    initialValue: _paymentMode,
                     decoration: const InputDecoration(
                       labelText: 'Payment Mode',
                       border: OutlineInputBorder(),

@@ -82,7 +82,7 @@ class _FuelScreenState extends State<FuelScreen> {
           Padding(
             padding: const EdgeInsets.all(12),
             child: DropdownButtonFormField<int?>(
-              value: _selectedTruckId,
+              initialValue: _selectedTruckId,
               decoration: const InputDecoration(
                 labelText: 'Filter by Truck',
                 border: OutlineInputBorder(),

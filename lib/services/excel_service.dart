@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
+import '../services/company_service.dart';
 
 class ExcelService {
   ExcelService._();
@@ -21,6 +22,7 @@ class ExcelService {
       final dateFormat = DateFormat('yyyy-MM-dd');
       final dateTimeFormat = DateFormat('yyyy-MM-dd HH:mm');
       final generatedOn = dateTimeFormat.format(DateTime.now());
+      final companyProfile = await CompanyService.instance.getCompany();
       final headers = [
         'Date',
         'Truck Number',
@@ -30,7 +32,7 @@ class ExcelService {
         'Payment Mode',
         'Amount',
       ];
-      final companyName = 'GAUTAM PARKASH INDIA PRIVATE LIMITED';
+      final companyName = companyProfile.companyName.toUpperCase();
       final title = 'EXPENSE REPORT';
       final totalAmount = expenses.fold<double>(
         0,

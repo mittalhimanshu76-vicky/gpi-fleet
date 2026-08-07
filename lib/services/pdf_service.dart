@@ -7,7 +7,8 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
+import '../models/company_profile.dart';
+import '../services/company_service.dart';
 
 class PdfService {
   PdfService._();
@@ -27,7 +28,8 @@ class PdfService {
       (sum, expense) => sum + _parseAmount(expense['amount']),
     );
     final generatedOn = dateTimeFormat.format(DateTime.now());
-    final logoImage = await _loadLogoImage();
+    final companyProfile = await CompanyService.instance.getCompany();
+    final logoImage = await _loadLogoImage(companyProfile.logoPath);
 
     pdf.addPage(
       pw.MultiPage(
@@ -35,7 +37,7 @@ class PdfService {
         margin: const pw.EdgeInsets.all(18),
         build: (pw.Context context) {
           return [
-            _buildHeader(logoImage, unicodeFont),
+            _buildHeader(logoImage, unicodeFont, companyProfile),
             pw.SizedBox(height: 12),
 
             pw.SizedBox(height: 14),
@@ -97,7 +99,7 @@ class PdfService {
                       ),
                     ),
                     pw.Text(
-                      'Gautam Parkash India Private Limited',
+                      companyProfile.companyName,
                       style: pw.TextStyle(
                         font: unicodeFont,
                         fontSize: 8,
@@ -129,7 +131,6 @@ class PdfService {
       ),
     );
 
-    await Printing.layoutPdf(onLayout: (format) async => pdf.save());
 
     try {
       final bytes = await pdf.save();
@@ -151,6 +152,7 @@ class PdfService {
   static pw.Widget _buildHeader(
     pw.MemoryImage? logoImage,
     pw.Font? unicodeFont,
+    CompanyProfile profile,
   ) {
     final titleStyle = pw.TextStyle(
       font: unicodeFont,
@@ -213,28 +215,37 @@ class PdfService {
                 pw.SizedBox(height: 8),
 
                 pw.Text(
-                  "Gautam Parkash India Private Limited",
+                  profile.companyName,
                   style: companyStyle,
                 ),
 
-                pw.SizedBox(height: 3),
+                if (profile.address != null && profile.address!.isNotEmpty) ...[
+                  pw.SizedBox(height: 3),
+                  pw.Text(
+                    '${profile.address!}${profile.city != null ? ', ${profile.city!}' : ''}${profile.state != null ? ', ${profile.state!}' : ''}${profile.pincode != null ? ' - ${profile.pincode!}' : ''}',
+                    style: infoStyle,
+                  ),
+                ],
 
-                pw.Text(
-                  "60/128, Laxman Vihar, Muzaffarnagar - 251001",
-                  style: infoStyle,
-                ),
+                if (profile.phone != null && profile.phone!.isNotEmpty) ...[
+                  pw.SizedBox(height: 2),
+                  pw.Text(profile.phone!, style: infoStyle),
+                ],
 
-                pw.SizedBox(height: 2),
+                if (profile.email != null && profile.email!.isNotEmpty) ...[
+                  pw.SizedBox(height: 2),
+                  pw.Text(profile.email!, style: infoStyle),
+                ],
 
-                pw.Text("+91 9760811758", style: infoStyle),
-
-                pw.SizedBox(height: 2),
-
-                pw.Text("gautamparkashindia@gmail.com", style: infoStyle),
-
-                pw.SizedBox(height: 2),
-
-                pw.Text("www.gautamparkashindia.com", style: infoStyle),
+                if (profile.website != null && profile.website!.isNotEmpty) ...[
+                  pw.SizedBox(height: 2),
+                  pw.Text(profile.website!, style: infoStyle),
+                ],
+                
+                if (profile.gstNumber != null && profile.gstNumber!.isNotEmpty) ...[
+                  pw.SizedBox(height: 2),
+                  pw.Text("GST: ${profile.gstNumber}", style: infoStyle),
+                ],
               ],
             ),
           ),
@@ -575,8 +586,15 @@ class PdfService {
     return '₹ ${formatter.format(amount)}';
   }
 
-  static Future<pw.MemoryImage?> _loadLogoImage() async {
+  static Future<pw.MemoryImage?> _loadLogoImage(String? customPath) async {
     try {
+      if (customPath != null && customPath.isNotEmpty) {
+        final file = File(customPath);
+        if (await file.exists()) {
+          final bytes = await file.readAsBytes();
+          return pw.MemoryImage(bytes);
+        }
+      }
       final bytes = await rootBundle.load('assets/image/gpi_logo.png');
       return pw.MemoryImage(bytes.buffer.asUint8List());
     } catch (_) {

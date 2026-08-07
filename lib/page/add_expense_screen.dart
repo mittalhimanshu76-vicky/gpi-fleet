@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-
 import '../database/database_helper.dart';
+import '../services/truck_service.dart';
+import '../models/truck.dart';
+import 'truck_master_screen.dart';
 
 class AddExpenseScreen extends StatefulWidget {
   const AddExpenseScreen({super.key, this.expense});
@@ -40,7 +42,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   DateTime selectedDate = DateTime.now();
   List<Map<String, dynamic>> drivers = [];
-  List<Map<String, dynamic>> trucks = [];
+  List<Truck> trucks = [];
   int? selectedDriverId;
   int? selectedTruckId;
   String paidBy = 'Ankur';
@@ -103,7 +105,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   Future<void> loadData() async {
     final loadedDrivers = await DatabaseHelper.instance.getDrivers();
-    final loadedTrucks = await DatabaseHelper.instance.getTrucks();
+    final loadedTrucks = await TruckService.instance.getActiveTrucks();
     if (!mounted) return;
     setState(() {
       drivers = loadedDrivers;
@@ -236,23 +238,69 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               onChanged: (value) => setState(() => selectedDriverId = value),
             ),
             const SizedBox(height: 15),
-            DropdownButtonFormField<int>(
-              initialValue: selectedTruckId,
-              decoration: const InputDecoration(
-                labelText: 'Truck Number',
-                border: OutlineInputBorder(),
-              ),
-              items: trucks
-                  .map(
-                    (truck) => DropdownMenuItem<int>(
-                      value: truck['id'] as int,
-                      child: Text(truck['truck_no'] as String),
+            if (trucks.isEmpty)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'No trucks available.',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const TruckMasterScreen(),
+                          ),
+                        );
+                        if (result == true || mounted) {
+                          loadData();
+                        }
+                      },
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Truck'),
                     ),
-                  )
-                  .toList(),
-              validator: (value) => value == null ? 'Select a truck' : null,
-              onChanged: (value) => setState(() => selectedTruckId = value),
-            ),
+                  ),
+                ],
+              )
+            else
+              DropdownButtonFormField<int>(
+                initialValue: selectedTruckId,
+                decoration: const InputDecoration(
+                  labelText: 'Truck Number',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.local_shipping),
+                ),
+                items: trucks
+                    .map(
+                      (truck) => DropdownMenuItem<int>(
+                        value: truck.id,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(truck.truckNumber),
+                            if (truck.vehicleType != null &&
+                                truck.vehicleType!.isNotEmpty)
+                              Text(
+                                truck.vehicleType!,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    )
+                    .toList(),
+                validator: (value) => value == null ? 'Select a truck' : null,
+                onChanged: (value) => setState(() => selectedTruckId = value),
+              ),
             const SizedBox(height: 15),
             TextFormField(
               controller: amountController,
