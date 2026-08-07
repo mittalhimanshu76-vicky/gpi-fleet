@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../database/database_helper.dart';
+import '../services/excel_service.dart';
 import '../services/pdf_service.dart';
 import 'add_expense_screen.dart';
 
@@ -170,6 +172,88 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
     }
   }
 
+  Future<void> _exportSelection(String format) async {
+    if (!mounted) return;
+    Navigator.pop(context);
+    if (!mounted) return;
+
+    setState(() => isExporting = true);
+    try {
+      final filteredExpenses = _filteredExpensesList();
+
+      if (format == 'pdf') {
+        await PdfService.generateExpenseReport(
+          expenses: filteredExpenses,
+          truckFilter: appliedTruck,
+          fromDate: appliedFromDate,
+          toDate: appliedToDate,
+        );
+      } else {
+        final excelPath = await ExcelService.exportExpenseReport(
+          expenses: filteredExpenses,
+          truckFilter: appliedTruck,
+          fromDate: appliedFromDate,
+          toDate: appliedToDate,
+        );
+        if (excelPath != null && mounted) {
+          await SharePlus.instance.share(
+            ShareParams(files: [XFile(excelPath)]),
+          );
+        } else if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Unable to export Excel file.')),
+          );
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Export failed.')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => isExporting = false);
+      }
+    }
+  }
+
+  Future<void> _showExportOptions() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Export As',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                ListTile(
+                  leading: const Icon(Icons.picture_as_pdf_outlined),
+                  title: const Text('Export PDF'),
+                  onTap: () => _exportSelection('pdf'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.table_chart_outlined),
+                  title: const Text('Export Excel'),
+                  onTap: () => _exportSelection('excel'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final truckNumbers =
@@ -198,25 +282,7 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
         title: const Text('Expense History'),
         actions: [
           IconButton(
-            onPressed: isExporting
-                ? null
-                : () async {
-                    setState(() => isExporting = true);
-                    try {
-                      final filteredExpenses = _filteredExpensesList();
-                      await PdfService.generateExpenseReport(
-                        expenses: filteredExpenses,
-                        truckFilter: selectedTruck,
-                        fromDate: selectedFromDate,
-                        toDate: selectedToDate,
-                      );
-                    } catch (_) {
-                    } finally {
-                      if (mounted) {
-                        setState(() => isExporting = false);
-                      }
-                    }
-                  },
+            onPressed: isExporting ? null : _showExportOptions,
             icon: const Icon(Icons.download),
             tooltip: 'Export',
           ),
