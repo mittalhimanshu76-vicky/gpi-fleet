@@ -194,7 +194,34 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
     }).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Expense History')),
+      appBar: AppBar(
+        title: const Text('Expense History'),
+        actions: [
+          IconButton(
+            onPressed: isExporting
+                ? null
+                : () async {
+                    setState(() => isExporting = true);
+                    try {
+                      final filteredExpenses = _filteredExpensesList();
+                      await PdfService.generateExpenseReport(
+                        expenses: filteredExpenses,
+                        truckFilter: selectedTruck,
+                        fromDate: selectedFromDate,
+                        toDate: selectedToDate,
+                      );
+                    } catch (_) {
+                    } finally {
+                      if (mounted) {
+                        setState(() => isExporting = false);
+                      }
+                    }
+                  },
+            icon: const Icon(Icons.download),
+            tooltip: 'Export',
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Padding(
@@ -267,17 +294,6 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
             ),
           ),
           const SizedBox(height: 5),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: ElevatedButton.icon(
-              onPressed: isExporting ? null : showExportOptions,
-              icon: const Icon(Icons.download),
-              label: const Text('Export'),
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size.fromHeight(50),
-              ),
-            ),
-          ),
           const SizedBox(height: 10),
           Expanded(
             child: filteredExpenses.isEmpty
@@ -394,54 +410,6 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
         ],
       ),
     );
-  }
-
-  Future<void> showExportOptions() async {
-    final selected = await showModalBottomSheet<String>(
-      context: context,
-      builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.picture_as_pdf),
-                title: const Text('Export as PDF'),
-                onTap: () => Navigator.pop(context, 'pdf'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-
-    if (selected != 'pdf') return;
-    await exportHistory();
-  }
-
-  Future<void> exportHistory() async {
-    setState(() => isExporting = true);
-    try {
-      final filteredExpenses = _filteredExpensesList();
-      final path = await PdfService.generateExpenseReport(
-        expenses: filteredExpenses,
-        truckFilter: appliedTruck,
-        fromDate: appliedFromDate,
-        toDate: appliedToDate,
-      );
-      if (!mounted) return;
-      await PdfService.openPdfPreview(path);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('PDF generated and opened for preview')),
-      );
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('PDF generation failed')));
-    } finally {
-      if (mounted) setState(() => isExporting = false);
-    }
   }
 
   List<Map<String, dynamic>> _filteredExpensesList() {

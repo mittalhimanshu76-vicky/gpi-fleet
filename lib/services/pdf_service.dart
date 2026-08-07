@@ -1,16 +1,15 @@
 import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'file:///C:/Users/user/AppData/Local/Pub/Cache/hosted/pub.dev/printing-5.15.0/lib/printing.dart';
+import 'package:printing/printing.dart';
 
 class PdfService {
   PdfService._();
 
-  static Future<String> generateExpenseReport({
+  static Future<void> generateExpenseReport({
     required List<Map<String, dynamic>> expenses,
     required String truckFilter,
     DateTime? fromDate,
@@ -19,120 +18,244 @@ class PdfService {
     final pdf = pw.Document();
     final dateFormat = DateFormat('yyyy-MM-dd');
     final dateTimeFormat = DateFormat('yyyy-MM-dd HH:mm');
+    final unicodeFont = await _loadUnicodeFont();
     final totalAmount = expenses.fold<double>(
       0,
       (sum, expense) => sum + _parseAmount(expense['amount']),
     );
 
+    final logoImage = await _loadLogoImage();
+
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(24),
+        margin: const pw.EdgeInsets.all(20),
         build: (pw.Context context) {
           return [
-            pw.Center(
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.center,
-                children: [
-                  pw.Text(
-                    'GPI Fleet',
-                    style: pw.TextStyle(
-                      fontSize: 24,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
-                  ),
-                  pw.SizedBox(height: 4),
-                  pw.Text(
-                    'Expense Report',
-                    style: pw.TextStyle(
-                      fontSize: 18,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
-                  ),
-                  pw.SizedBox(height: 16),
-                  pw.Divider(),
-                ],
+            _buildHeader(logoImage, unicodeFont),
+            pw.SizedBox(height: 12),
+            pw.Container(
+              decoration: const pw.BoxDecoration(
+                border: pw.Border(
+                  bottom: pw.BorderSide(color: PdfColors.blue700, width: 1.2),
+                ),
               ),
             ),
-            pw.SizedBox(height: 12),
-            pw.Text(
-              'Filters Applied',
-              style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
-            ),
-            pw.SizedBox(height: 6),
-            pw.Text(
-              'Truck: ${truckFilter == 'All Trucks' ? 'All Trucks' : truckFilter}',
-            ),
-            pw.Text(
-              'Date From: ${fromDate == null ? '-' : dateFormat.format(fromDate)}',
-            ),
-            pw.Text(
-              'Date To: ${toDate == null ? '-' : dateFormat.format(toDate)}',
-            ),
             pw.SizedBox(height: 16),
-            pw.Divider(),
-            pw.SizedBox(height: 8),
-            pw.Text(
-              'Table',
-              style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+            _buildFilterSection(
+              truckFilter: truckFilter,
+              fromDate: fromDate,
+              toDate: toDate,
+              dateFormat: dateFormat,
+              unicodeFont: unicodeFont,
             ),
-            pw.SizedBox(height: 8),
+            pw.SizedBox(height: 14),
+            _buildSummaryBox(
+              totalEntries: expenses.length,
+              totalAmount: totalAmount,
+              unicodeFont: unicodeFont,
+            ),
+            pw.SizedBox(height: 14),
             expenses.isEmpty
                 ? pw.Center(
                     child: pw.Text(
                       'No expense records found.',
-                      style: const pw.TextStyle(fontSize: 12),
+                      style: pw.TextStyle(font: unicodeFont, fontSize: 12),
                     ),
                   )
-                : _buildExpenseTable(expenses, dateFormat),
-            pw.SizedBox(height: 18),
-            pw.Divider(),
-            pw.SizedBox(height: 10),
-            pw.Row(
+                : _buildExpenseTable(expenses, dateFormat, unicodeFont),
+          ];
+        },
+        footer: (pw.Context context) {
+          final generatedOn = dateTimeFormat.format(DateTime.now());
+          return pw.Container(
+            margin: const pw.EdgeInsets.only(top: 10),
+            child: pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
                 pw.Text(
-                  'Total Expenses: ₹ ${totalAmount.toStringAsFixed(2)}',
-                  style: pw.TextStyle(
-                    fontSize: 12,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
+                  'Generated by GPI Fleet',
+                  style: pw.TextStyle(font: unicodeFont, fontSize: 9),
                 ),
                 pw.Text(
-                  'Generated on: ${dateTimeFormat.format(DateTime.now())}',
-                  style: const pw.TextStyle(fontSize: 10),
+                  'Generated on: $generatedOn',
+                  style: pw.TextStyle(font: unicodeFont, fontSize: 9),
+                ),
+                pw.Text(
+                  'Page ${context.pageNumber} of ${context.pagesCount}',
+                  style: pw.TextStyle(font: unicodeFont, fontSize: 9),
                 ),
               ],
             ),
-          ];
+          );
         },
       ),
     );
 
-    final bytes = await pdf.save();
-    final directory = await getTemporaryDirectory();
-    final file = File(
-      p.join(
-        directory.path,
-        'expense_report_${DateTime.now().millisecondsSinceEpoch}.pdf',
-      ),
-    );
-    await file.writeAsBytes(bytes, flush: true);
-    return file.path;
+    await Printing.layoutPdf(onLayout: (format) async => pdf.save());
   }
 
-  static Future<void> openPdfPreview(String filePath) async {
-    final file = File(filePath);
-    if (!await file.exists()) return;
+  static pw.Widget _buildHeader(
+    pw.MemoryImage? logoImage,
+    pw.Font? unicodeFont,
+  ) {
+    return pw.Row(
+      crossAxisAlignment: pw.CrossAxisAlignment.center,
+      children: [
+        if (logoImage != null)
+          pw.Container(
+            width: 64,
+            height: 64,
+            child: pw.Image(logoImage, fit: pw.BoxFit.contain),
+          )
+        else
+          pw.SizedBox(width: 64, height: 64),
+        pw.SizedBox(width: 14),
+        pw.Expanded(
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.end,
+            children: [
+              pw.Text(
+                'GPI FLEET',
+                style: pw.TextStyle(
+                  font: unicodeFont,
+                  fontSize: 22,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.blue900,
+                ),
+              ),
+              pw.SizedBox(height: 4),
+              pw.Text(
+                'Expense Report',
+                style: pw.TextStyle(
+                  font: unicodeFont,
+                  fontSize: 15,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.blue700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => file.readAsBytes(),
+  static pw.Widget _buildFilterSection({
+    required String truckFilter,
+    required DateTime? fromDate,
+    required DateTime? toDate,
+    required DateFormat dateFormat,
+    required pw.Font? unicodeFont,
+  }) {
+    final labelStyle = pw.TextStyle(
+      font: unicodeFont,
+      fontSize: 10,
+      fontWeight: pw.FontWeight.bold,
+      color: PdfColors.blue900,
+    );
+    final valueStyle = pw.TextStyle(font: unicodeFont, fontSize: 10);
+
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(10),
+      decoration: pw.BoxDecoration(
+        color: PdfColors.grey100,
+        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+        border: pw.Border.all(width: 0.5, color: PdfColors.grey400),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text('Filters', style: labelStyle),
+          pw.SizedBox(height: 8),
+          pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Expanded(
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text('Truck', style: labelStyle),
+                    pw.SizedBox(height: 4),
+                    pw.Text(
+                      truckFilter == 'All Trucks' ? 'All Trucks' : truckFilter,
+                      style: valueStyle,
+                    ),
+                  ],
+                ),
+              ),
+              pw.SizedBox(width: 12),
+              pw.Expanded(
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text('From Date', style: labelStyle),
+                    pw.SizedBox(height: 4),
+                    pw.Text(
+                      fromDate == null ? '-' : dateFormat.format(fromDate),
+                      style: valueStyle,
+                    ),
+                  ],
+                ),
+              ),
+              pw.SizedBox(width: 12),
+              pw.Expanded(
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text('To Date', style: labelStyle),
+                    pw.SizedBox(height: 4),
+                    pw.Text(
+                      toDate == null ? '-' : dateFormat.format(toDate),
+                      style: valueStyle,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _buildSummaryBox({
+    required int totalEntries,
+    required double totalAmount,
+    required pw.Font? unicodeFont,
+  }) {
+    final labelStyle = pw.TextStyle(
+      font: unicodeFont,
+      fontSize: 10,
+      fontWeight: pw.FontWeight.bold,
+      color: PdfColors.blue900,
+    );
+    final valueStyle = pw.TextStyle(font: unicodeFont, fontSize: 11);
+
+    return pw.Container(
+      padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: pw.BoxDecoration(
+        color: PdfColors.grey200,
+        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+        border: pw.Border.all(width: 0.5, color: PdfColors.grey400),
+      ),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Text('Total Entries : $totalEntries', style: labelStyle),
+          pw.Text(
+            'Total Amount : ${_formatCurrency(totalAmount)}',
+            style: valueStyle,
+          ),
+        ],
+      ),
     );
   }
 
   static pw.Widget _buildExpenseTable(
     List<Map<String, dynamic>> expenses,
     DateFormat dateFormat,
+    pw.Font? unicodeFont,
   ) {
     final headers = [
       'Date',
@@ -152,27 +275,88 @@ class PdfService {
         expense['expense_name']?.toString() ?? '',
         expense['paid_by']?.toString() ?? '',
         expense['payment_mode']?.toString() ?? '',
-        '₹${_parseAmount(expense['amount']).toStringAsFixed(2)}',
+        _formatCurrency(_parseAmount(expense['amount'])),
       ];
     }).toList();
 
-    return pw.TableHelper.fromTextArray(
-      headers: headers,
-      data: data,
-      border: null,
-      headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-      cellAlignment: pw.Alignment.centerLeft,
-      headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
-      cellPadding: const pw.EdgeInsets.all(6),
-      columnWidths: {
-        0: const pw.FlexColumnWidth(1.3),
-        1: const pw.FlexColumnWidth(1.0),
-        2: const pw.FlexColumnWidth(1.3),
-        3: const pw.FlexColumnWidth(1.2),
-        4: const pw.FlexColumnWidth(1.2),
-        5: const pw.FlexColumnWidth(1.0),
-        6: const pw.FlexColumnWidth(0.9),
-      },
+    final headerStyle = pw.TextStyle(
+      font: unicodeFont,
+      fontSize: 8,
+      fontWeight: pw.FontWeight.bold,
+      color: PdfColors.white,
+    );
+    final baseTextStyle = pw.TextStyle(font: unicodeFont, fontSize: 8);
+    final amountStyle = pw.TextStyle(
+      font: unicodeFont,
+      fontSize: 8,
+      fontWeight: pw.FontWeight.bold,
+    );
+
+    return pw.Container(
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(width: 0.5, color: PdfColors.grey500),
+      ),
+      child: pw.Table(
+        border: pw.TableBorder(
+          horizontalInside: const pw.BorderSide(width: 0.5, color: PdfColors.grey400),
+          verticalInside: const pw.BorderSide(width: 0.5, color: PdfColors.grey400),
+          left: const pw.BorderSide(width: 0.5, color: PdfColors.grey500),
+          top: const pw.BorderSide(width: 0.5, color: PdfColors.grey500),
+          right: const pw.BorderSide(width: 0.5, color: PdfColors.grey500),
+          bottom: const pw.BorderSide(width: 0.5, color: PdfColors.grey500),
+        ),
+        columnWidths: {
+          0: const pw.FlexColumnWidth(1.2),
+          1: const pw.FlexColumnWidth(0.9),
+          2: const pw.FlexColumnWidth(1.2),
+          3: const pw.FlexColumnWidth(1.2),
+          4: const pw.FlexColumnWidth(1.0),
+          5: const pw.FlexColumnWidth(1.0),
+          6: const pw.FlexColumnWidth(0.9),
+        },
+        children: [
+          pw.TableRow(
+            decoration: const pw.BoxDecoration(color: PdfColors.blue800),
+            children: headers.map((header) {
+              return pw.Container(
+                padding: const pw.EdgeInsets.all(8),
+                child: pw.Center(
+                  child: pw.Text(
+                    header,
+                    style: headerStyle,
+                    softWrap: false,
+                    textAlign: pw.TextAlign.center,
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          ...data.asMap().entries.map((entry) {
+            final rowIndex = entry.key;
+            final rowData = entry.value;
+            return pw.TableRow(
+              decoration: rowIndex.isEven
+                  ? const pw.BoxDecoration(color: PdfColors.white)
+                  : const pw.BoxDecoration(color: PdfColors.grey100),
+              children: rowData.asMap().entries.map((cellEntry) {
+                final isAmount = cellEntry.key == rowData.length - 1;
+                final value = cellEntry.value.toString();
+                return pw.Container(
+                  padding: const pw.EdgeInsets.all(8),
+                  child: pw.Center(
+                    child: pw.Text(
+                      value,
+                      style: isAmount ? amountStyle : baseTextStyle,
+                      softWrap: false,
+                      textAlign: isAmount ? pw.TextAlign.right : pw.TextAlign.left,
+                    ),
+                  ),
+                );
+              }).toList(),
+            );
+          }),
+        ],
+      ),
     );
   }
 
@@ -191,6 +375,42 @@ class PdfService {
     }
 
     return input;
+  }
+
+  static String _formatCurrency(double amount) {
+    final formatter = NumberFormat('#,##0.00', 'en_US');
+    return '₹ ${formatter.format(amount)}';
+  }
+
+  static Future<pw.MemoryImage?> _loadLogoImage() async {
+    try {
+      final bytes = await rootBundle.load('assets/image/gpi_logo.png');
+      return pw.MemoryImage(bytes.buffer.asUint8List());
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<pw.Font?> _loadUnicodeFont() async {
+    final candidates = <String>[
+      r'C:\Windows\Fonts\arial.ttf',
+      r'C:\Windows\Fonts\arialuni.ttf',
+      r'C:\Windows\Fonts\seguiemj.ttf',
+    ];
+
+    for (final path in candidates) {
+      final file = File(path);
+      if (!await file.exists()) continue;
+
+      try {
+        final bytes = await file.readAsBytes();
+        return pw.Font.ttf(bytes.buffer.asByteData());
+      } catch (_) {
+        continue;
+      }
+    }
+
+    return null;
   }
 
   static double _parseAmount(dynamic value) {
