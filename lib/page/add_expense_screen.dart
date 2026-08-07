@@ -349,7 +349,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               child: ElevatedButton(
                 onPressed: isSaving ? null : saveExpense,
                 child: Text(
-                  isSaving
+                    isSaving
                       ? 'SAVING...'
                       : isEditing
                       ? 'UPDATE EXPENSE'
