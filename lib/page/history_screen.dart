@@ -182,12 +182,21 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
       final filteredExpenses = _filteredExpensesList();
 
       if (format == 'pdf') {
-        await PdfService.generateExpenseReport(
+        final pdfPath = await PdfService.generateExpenseReport(
           expenses: filteredExpenses,
           truckFilter: appliedTruck,
           fromDate: appliedFromDate,
           toDate: appliedToDate,
         );
+        if (pdfPath != null && mounted) {
+          await SharePlus.instance.share(
+            ShareParams(files: [XFile(pdfPath)]),
+          );
+        } else if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Unable to export PDF file.')),
+          );
+        }
       } else {
         final excelPath = await ExcelService.exportExpenseReport(
           expenses: filteredExpenses,
@@ -293,7 +302,7 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: DropdownButtonFormField<String>(
-              value: selectedTruck,
+              initialValue: selectedTruck,
               decoration: const InputDecoration(
                 hintText: 'Select Truck',
                 prefixIcon: Icon(Icons.local_shipping),

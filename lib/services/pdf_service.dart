@@ -1,7 +1,10 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -9,7 +12,7 @@ import 'package:printing/printing.dart';
 class PdfService {
   PdfService._();
 
-  static Future<void> generateExpenseReport({
+  static Future<String?> generateExpenseReport({
     required List<Map<String, dynamic>> expenses,
     required String truckFilter,
     DateTime? fromDate,
@@ -127,6 +130,22 @@ class PdfService {
     );
 
     await Printing.layoutPdf(onLayout: (format) async => pdf.save());
+
+    try {
+      final bytes = await pdf.save();
+      final directory = await getTemporaryDirectory();
+      final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final filePath = path.join(
+        directory.path,
+        'expense_report_$timestamp.pdf',
+      );
+      final file = File(filePath);
+      await file.writeAsBytes(bytes, flush: true);
+      return file.path;
+    } catch (e) {
+      debugPrint("PDF Save Error: $e");
+      return null;
+    }
   }
 
   static pw.Widget _buildHeader(

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:excel/excel.dart';
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
@@ -216,8 +217,8 @@ class ExcelService {
       await file.writeAsBytes(bytes, flush: true);
       return file.path;
     } catch (e, stackTrace) {
-      print("Excel Export Error: $e");
-      print(stackTrace);
+      debugPrint("Excel Export Error: $e");
+      debugPrint(stackTrace.toString());
       rethrow;
     }
   }

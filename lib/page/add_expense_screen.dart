@@ -266,8 +266,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               ),
               validator: (value) {
                 final amount = double.tryParse(value?.trim() ?? '');
-                if (amount == null || amount <= 0)
+                if (amount == null || amount <= 0) {
                   return 'Enter a valid amount';
+                }
                 return null;
               },
             ),
