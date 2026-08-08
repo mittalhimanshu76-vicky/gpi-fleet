@@ -1,7 +1,9 @@
+import 'fleet_alert.dart';
+
 class DashboardSummary {
   final FleetStats fleet;
   final FinancialSummary financials;
-  final AlertsSummary alerts;
+  final FleetAlertsSummary alerts;
   final List<TopTruckMaintenance> topMaintenanceTrucks;
   final List<RecentActivity> recentActivities;
 
@@ -26,21 +28,6 @@ class FleetStats {
   });
 }
 
-class FinancialSummary {
-  final MonthlyFinancials currentMonth;
-  final MonthlyFinancials previousMonth;
-
-  FinancialSummary({
-    required this.currentMonth,
-    required this.previousMonth,
-  });
-
-  double get trendPercentage {
-    if (previousMonth.total == 0) return 0;
-    return ((currentMonth.total - previousMonth.total) / previousMonth.total) * 100;
-  }
-}
-
 class MonthlyFinancials {
   final double expenses;
   final double fuel;
@@ -55,16 +42,19 @@ class MonthlyFinancials {
   });
 }
 
-class AlertsSummary {
-  final int maintenanceDue;
-  final int overdueMaintenance;
-  final int licenseExpiry;
+class FinancialSummary {
+  final MonthlyFinancials currentMonth;
+  final MonthlyFinancials previousMonth;
 
-  AlertsSummary({
-    required this.maintenanceDue,
-    required this.overdueMaintenance,
-    required this.licenseExpiry,
+  FinancialSummary({
+    required this.currentMonth,
+    required this.previousMonth,
   });
+
+  double get trendPercentage {
+    if (previousMonth.total == 0) return 0;
+    return ((currentMonth.total - previousMonth.total) / previousMonth.total) * 100;
+  }
 }
 
 class TopTruckMaintenance {

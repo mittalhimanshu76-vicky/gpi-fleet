@@ -750,4 +750,39 @@ class DatabaseHelper {
     final day = date.day.toString().padLeft(2, "0");
     return "${date.year}-$month-$day";
   }
+
+  //---------------- REPORTS ----------------//
+
+  Future<List<Map<String, dynamic>>> queryTruckOperatingCosts(String startDate, String endDate) async {
+    final db = await database;
+    return db.rawQuery('''
+      SELECT 
+        t.id, 
+        t.truck_number,
+        COALESCE(exp.total, 0) as expense_total,
+        COALESCE(fuel.total, 0) as fuel_total,
+        COALESCE(maint.total, 0) as maintenance_total
+      FROM trucks t
+      LEFT JOIN (
+        SELECT truck_id, SUM(amount) as total 
+        FROM expenses 
+        WHERE date BETWEEN ? AND ? 
+        GROUP BY truck_id
+      ) exp ON t.id = exp.truck_id
+      LEFT JOIN (
+        SELECT truck_id, SUM(total_amount) as total 
+        FROM fuel_entries 
+        WHERE date BETWEEN ? AND ? 
+        GROUP BY truck_id
+      ) fuel ON t.id = fuel.truck_id
+      LEFT JOIN (
+        SELECT truck_id, SUM(amount) as total 
+        FROM maintenance_entries 
+        WHERE date BETWEEN ? AND ? 
+        GROUP BY truck_id
+      ) maint ON t.id = maint.truck_id
+      WHERE exp.total IS NOT NULL OR fuel.total IS NOT NULL OR maint.total IS NOT NULL
+      ORDER BY t.truck_number ASC
+    ''', [startDate, endDate, startDate, endDate, startDate, endDate]);
+  }
 }

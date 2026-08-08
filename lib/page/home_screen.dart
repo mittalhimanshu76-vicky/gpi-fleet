@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/dashboard_service.dart';
 import '../models/dashboard_summary.dart';
+import '../models/fleet_alert.dart';
 import 'add_expense_screen.dart';
 import 'history_screen.dart';
 import 'masters_screen.dart';
@@ -208,30 +209,56 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildFleetHealth(AlertsSummary alerts) {
+  Widget _buildFleetHealth(FleetAlertsSummary alerts) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text('Fleet Health & Alerts', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
-        Row(
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
           children: [
-            _buildAlertBox('Overdue', alerts.overdueMaintenance, Colors.red),
-            const SizedBox(width: 8),
-            _buildAlertBox('Due Soon', alerts.maintenanceDue, Colors.orange),
-            const SizedBox(width: 8),
-            _buildAlertBox('License Exp.', alerts.licenseExpiry, Colors.blueGrey),
+            _buildAlertBox(
+              'Overdue Service',
+              alerts.maintenanceOverdue.length,
+              Colors.red,
+              () => _showAlertDetails('Overdue Services', alerts.maintenanceOverdue),
+            ),
+            _buildAlertBox(
+              'Service Due',
+              alerts.maintenanceDueSoon.length,
+              Colors.orange,
+              () => _showAlertDetails('Upcoming Services', alerts.maintenanceDueSoon),
+            ),
+            _buildAlertBox(
+              'License Expired',
+              alerts.licenseExpired.length,
+              Colors.red,
+              () => _showAlertDetails('Expired Licenses', alerts.licenseExpired),
+            ),
+            _buildAlertBox(
+              'License Due',
+              alerts.licenseExpiringSoon.length,
+              Colors.blueGrey,
+              () => _showAlertDetails('Expiring Soon', alerts.licenseExpiringSoon),
+            ),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildAlertBox(String label, int count, Color color) {
+  Widget _buildAlertBox(String label, int count, Color color, VoidCallback onTap) {
     final isZero = count == 0;
     final displayColor = isZero ? Colors.green : color;
-    return Expanded(
+    final width = (MediaQuery.of(context).size.width - 32 - 8) / 2;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
       child: Container(
+        width: width,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: displayColor.withAlpha(15),
@@ -245,7 +272,7 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: displayColor),
             ),
             Text(
-              label,
+              isZero ? 'No $label' : label,
               style: TextStyle(fontSize: 11, color: displayColor.withAlpha(200)),
               textAlign: TextAlign.center,
               maxLines: 1,
@@ -254,6 +281,64 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showAlertDetails(String title, List<FleetAlert> alerts) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              if (alerts.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Center(child: Text('No active alerts in this category')),
+                )
+              else
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: alerts.length,
+                    itemBuilder: (context, index) {
+                      final alert = alerts[index];
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: CircleAvatar(
+                          backgroundColor: (alert.severity == AlertSeverity.high ? Colors.red : Colors.orange).withAlpha(30),
+                          child: Icon(
+                            alert.type == AlertType.maintenance ? Icons.build : Icons.badge,
+                            size: 20,
+                            color: alert.severity == AlertSeverity.high ? Colors.red : Colors.orange,
+                          ),
+                        ),
+                        title: Text(alert.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text(alert.subtitle),
+                        onTap: () {
+                          Navigator.pop(context);
+                          if (alert.type == AlertType.maintenance) {
+                            openScreen(const MaintenanceScreen());
+                          } else {
+                            openScreen(const DriverMasterScreen());
+                          }
+                        },
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 

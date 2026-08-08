@@ -1,6 +1,7 @@
 import 'package:intl/intl.dart';
 import '../database/database_helper.dart';
 import '../models/dashboard_summary.dart';
+import 'alert_service.dart';
 
 class DashboardService {
   DashboardService._();
@@ -13,9 +14,6 @@ class DashboardService {
     final currentMonthStr = DateFormat('yyyy-MM').format(now);
     final previousMonthDate = DateTime(now.year, now.month - 1);
     final previousMonthStr = DateFormat('yyyy-MM').format(previousMonthDate);
-    final todayStr = DateFormat('yyyy-MM-dd').format(now);
-    final sevenDaysLaterStr = DateFormat('yyyy-MM-dd').format(now.add(const Duration(days: 7)));
-    final thirtyDaysLaterStr = DateFormat('yyyy-MM-dd').format(now.add(const Duration(days: 30)));
 
     // 1. Fleet Stats
     final fleetData = await db.rawQuery('''
@@ -39,18 +37,7 @@ class DashboardService {
     );
 
     // 3. Alerts
-    final alertsData = await db.rawQuery('''
-      SELECT
-        (SELECT COUNT(*) FROM maintenance_entries WHERE next_service_date BETWEEN ? AND ?) as due,
-        (SELECT COUNT(*) FROM maintenance_entries WHERE next_service_date < ?) as overdue,
-        (SELECT COUNT(*) FROM drivers WHERE license_expiry BETWEEN ? AND ?) as license
-    ''', [todayStr, sevenDaysLaterStr, todayStr, todayStr, thirtyDaysLaterStr]);
-
-    final alerts = AlertsSummary(
-      maintenanceDue: alertsData.first['due'] as int,
-      overdueMaintenance: alertsData.first['overdue'] as int,
-      licenseExpiry: alertsData.first['license'] as int,
-    );
+    final alerts = await AlertService.instance.getFleetAlerts();
 
     // 4. Top Maintenance Trucks
     final topMaintenanceData = await db.rawQuery('''
