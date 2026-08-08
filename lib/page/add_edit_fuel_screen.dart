@@ -48,11 +48,26 @@ class _AddEditFuelScreenState extends State<AddEditFuelScreen> {
   }
 
   Future<void> _loadTrucks() async {
+    // Load only ACTIVE trucks as per requirement
     final trucks = await TruckService.instance.getActiveTrucks();
     setState(() {
       _trucks = trucks;
       _isLoadingTrucks = false;
+      
+      // If editing and the truck is not active, we still need to show it in the list
+      if (widget.fuelEntry != null && !_trucks.any((t) => t.id == widget.fuelEntry!.truckId)) {
+        _loadSpecificTruck(widget.fuelEntry!.truckId);
+      }
     });
+  }
+
+  Future<void> _loadSpecificTruck(int id) async {
+    final truck = await TruckService.instance.getTruck(id);
+    if (truck != null && mounted) {
+      setState(() {
+        _trucks.add(truck);
+      });
+    }
   }
 
   @override
@@ -70,7 +85,9 @@ class _AddEditFuelScreenState extends State<AddEditFuelScreen> {
     final liters = double.tryParse(_litersController.text) ?? 0;
     final rate = double.tryParse(_rateController.text) ?? 0;
     if (liters > 0 && rate > 0) {
-      _totalController.text = (liters * rate).toStringAsFixed(2);
+      setState(() {
+        _totalController.text = (liters * rate).toStringAsFixed(2);
+      });
     }
   }
 
@@ -104,6 +121,8 @@ class _AddEditFuelScreenState extends State<AddEditFuelScreen> {
       fuelStation: _stationController.text.trim(),
       paymentMode: _paymentMode,
       remarks: _remarksController.text.trim(),
+      createdAt: widget.fuelEntry?.createdAt ?? DateTime.now().toIso8601String(),
+      updatedAt: DateTime.now().toIso8601String(),
     );
 
     try {
@@ -133,7 +152,9 @@ class _AddEditFuelScreenState extends State<AddEditFuelScreen> {
             child: Form(
               key: _formKey,
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  _buildSectionTitle('Vehicle & Date'),
                   DropdownButtonFormField<int>(
                     initialValue: _selectedTruckId,
                     decoration: const InputDecoration(
@@ -160,6 +181,7 @@ class _AddEditFuelScreenState extends State<AddEditFuelScreen> {
                         onPressed: _pickDate,
                       ),
                     ),
+                    validator: (val) => val == null || val.isEmpty ? 'Date required' : null,
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
@@ -168,10 +190,12 @@ class _AddEditFuelScreenState extends State<AddEditFuelScreen> {
                       labelText: 'Odometer Reading',
                       border: OutlineInputBorder(),
                       suffixText: 'km',
+                      prefixIcon: Icon(Icons.speed),
                     ),
-                    keyboardType: TextInputType.number,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
+                  _buildSectionTitle('Fuel Details'),
                   Row(
                     children: [
                       Expanded(
@@ -180,12 +204,13 @@ class _AddEditFuelScreenState extends State<AddEditFuelScreen> {
                           decoration: const InputDecoration(
                             labelText: 'Liters *',
                             border: OutlineInputBorder(),
+                            suffixText: 'L',
                           ),
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           onChanged: (_) => _calculateTotal(),
                           validator: (val) {
                             if (val == null || double.tryParse(val) == null || double.parse(val) <= 0) {
-                              return 'Invalid liters';
+                              return 'Liters > 0';
                             }
                             return null;
                           },
@@ -202,6 +227,12 @@ class _AddEditFuelScreenState extends State<AddEditFuelScreen> {
                           ),
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           onChanged: (_) => _calculateTotal(),
+                          validator: (val) {
+                            if (val != null && val.isNotEmpty && double.tryParse(val) == null) {
+                              return 'Invalid rate';
+                            }
+                            return null;
+                          },
                         ),
                       ),
                     ],
@@ -213,16 +244,18 @@ class _AddEditFuelScreenState extends State<AddEditFuelScreen> {
                       labelText: 'Total Amount *',
                       border: OutlineInputBorder(),
                       prefixText: '₹',
+                      hintText: 'Auto-calculated or manual',
                     ),
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     validator: (val) {
                       if (val == null || double.tryParse(val) == null || double.parse(val) <= 0) {
-                        return 'Invalid total';
+                        return 'Total > 0';
                       }
                       return null;
                     },
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
+                  _buildSectionTitle('Optional Info'),
                   TextFormField(
                     controller: _stationController,
                     decoration: const InputDecoration(
@@ -255,19 +288,40 @@ class _AddEditFuelScreenState extends State<AddEditFuelScreen> {
                     ),
                     maxLines: 2,
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
                   SizedBox(
                     width: double.infinity,
                     height: 55,
                     child: ElevatedButton(
                       onPressed: _save,
-                      child: const Text('SAVE FUEL ENTRY', style: TextStyle(fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: Text(
+                        widget.fuelEntry == null ? 'SAVE FUEL ENTRY' : 'UPDATE FUEL ENTRY',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
           ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          color: Theme.of(context).colorScheme.primary,
+          letterSpacing: 1.2,
+        ),
+      ),
     );
   }
 }

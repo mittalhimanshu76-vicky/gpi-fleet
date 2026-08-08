@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 9,
+      version: 10,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -107,7 +107,7 @@ class DatabaseHelper {
         fuel_station TEXT,
         payment_mode TEXT,
         remarks TEXT,
-        created_at TEXT,
+        created_at TEXT NOT NULL,
         updated_at TEXT,
         FOREIGN KEY (truck_id) REFERENCES trucks (id)
       )
@@ -308,7 +308,9 @@ class DatabaseHelper {
       }
     }
 
-    if (oldVersion < 9) {
+    if (oldVersion < 10) {
+      // Re-create or create fuel_entries with correct NOT NULL constraint
+      await db.execute("DROP TABLE IF EXISTS fuel_entries");
       await db.execute('''
         CREATE TABLE fuel_entries(
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -321,7 +323,7 @@ class DatabaseHelper {
           fuel_station TEXT,
           payment_mode TEXT,
           remarks TEXT,
-          created_at TEXT,
+          created_at TEXT NOT NULL,
           updated_at TEXT,
           FOREIGN KEY (truck_id) REFERENCES trucks (id)
         )
@@ -489,7 +491,18 @@ class DatabaseHelper {
     return db.delete("fuel_entries", where: "id=?", whereArgs: [id]);
   }
 
-  Future<List<Map<String, dynamic>>> queryFuelEntries({int? truckId, String? startDate, String? endDate}) async {
+  Future<Map<String, dynamic>?> queryFuelEntry(int id) async {
+    final db = await database;
+    final result = await db.rawQuery('''
+      SELECT f.*, t.truck_number
+      FROM fuel_entries f
+      LEFT JOIN trucks t ON f.truck_id = t.id
+      WHERE f.id = ?
+    ''', [id]);
+    return result.isNotEmpty ? result.first : null;
+  }
+
+  Future<List<Map<String, dynamic>>> queryFuelEntries({int? truckId, String? startDate, String? endDate, String? searchTerm}) async {
     final db = await database;
     String where = "";
     List<dynamic> whereArgs = [];
@@ -503,6 +516,12 @@ class DatabaseHelper {
       if (where.isNotEmpty) where += " AND ";
       where += "f.date BETWEEN ? AND ?";
       whereArgs.addAll([startDate, endDate]);
+    }
+
+    if (searchTerm != null && searchTerm.isNotEmpty) {
+      if (where.isNotEmpty) where += " AND ";
+      where += "(t.truck_number LIKE ? OR f.fuel_station LIKE ? OR f.remarks LIKE ?)";
+      whereArgs.addAll(["%$searchTerm%", "%$searchTerm%", "%$searchTerm%"]);
     }
 
     final query = '''

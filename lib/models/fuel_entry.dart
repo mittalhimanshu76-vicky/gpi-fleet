@@ -1,7 +1,7 @@
 class FuelEntry {
   final int? id;
   final int truckId;
-  final String? truckNumber; // Joined from truck table
+  final String? truckNumber; // Joined from trucks table
   final String date;
   final double? odometer;
   final double liters;
@@ -61,6 +61,38 @@ class FuelEntry {
       remarks: map['remarks'] as String?,
       createdAt: map['created_at'] as String?,
       updatedAt: map['updated_at'] as String?,
+    );
+  }
+
+  FuelEntry copyWith({
+    int? id,
+    int? truckId,
+    String? truckNumber,
+    String? date,
+    double? odometer,
+    double? liters,
+    double? ratePerLiter,
+    double? totalAmount,
+    String? fuelStation,
+    String? paymentMode,
+    String? remarks,
+    String? createdAt,
+    String? updatedAt,
+  }) {
+    return FuelEntry(
+      id: id ?? this.id,
+      truckId: truckId ?? this.truckId,
+      truckNumber: truckNumber ?? this.truckNumber,
+      date: date ?? this.date,
+      odometer: odometer ?? this.odometer,
+      liters: liters ?? this.liters,
+      ratePerLiter: ratePerLiter ?? this.ratePerLiter,
+      totalAmount: totalAmount ?? this.totalAmount,
+      fuelStation: fuelStation ?? this.fuelStation,
+      paymentMode: paymentMode ?? this.paymentMode,
+      remarks: remarks ?? this.remarks,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 }
