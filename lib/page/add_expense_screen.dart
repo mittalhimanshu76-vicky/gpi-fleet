@@ -221,6 +221,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
             ),
             const SizedBox(height: 15),
             DropdownButtonFormField<int>(
+              isExpanded: true,
               initialValue: selectedDriverId,
               decoration: const InputDecoration(
                 labelText: 'Driver',
@@ -269,6 +270,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               )
             else
               DropdownButtonFormField<int>(
+                isExpanded: true,
                 initialValue: selectedTruckId,
                 decoration: const InputDecoration(
                   labelText: 'Truck Number',
@@ -279,21 +281,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                     .map(
                       (truck) => DropdownMenuItem<int>(
                         value: truck.id,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(truck.truckNumber),
-                            if (truck.vehicleType != null &&
-                                truck.vehicleType!.isNotEmpty)
-                              Text(
-                                truck.vehicleType!,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                          ],
+                        child: Text(
+                          truck.truckNumber,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     )
@@ -322,6 +312,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
             ),
             const SizedBox(height: 15),
             DropdownButtonFormField<String>(
+              isExpanded: true,
               initialValue: paidBy,
               decoration: const InputDecoration(
                 labelText: 'Paid By',
@@ -350,6 +341,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
             ],
             const SizedBox(height: 15),
             DropdownButtonFormField<String>(
+              isExpanded: true,
               initialValue: paymentMode,
               decoration: const InputDecoration(
                 labelText: 'Payment Mode',
@@ -367,6 +359,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
             ),
             const SizedBox(height: 15),
             DropdownButtonFormField<String>(
+              isExpanded: true,
               initialValue: selectedExpenseName,
               decoration: const InputDecoration(
                 labelText: 'Expense Name',

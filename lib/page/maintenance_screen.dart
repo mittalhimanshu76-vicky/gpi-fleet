@@ -182,7 +182,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
 
   Widget _buildSearchAndFilters() {
     return Padding(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -192,7 +192,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
               hintText: 'Search maintenance...',
               prefixIcon: const Icon(Icons.search),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              contentPadding: const EdgeInsets.symmetric(vertical: 0),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
             ),
             onSubmitted: (_) => _loadEntries(),
           ),
@@ -200,21 +200,22 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
           Wrap(
             spacing: 8,
             runSpacing: 12,
+            alignment: WrapAlignment.start,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               ConstrainedBox(
-                constraints: const BoxConstraints(minWidth: 120, maxWidth: 150),
+                constraints: const BoxConstraints(minWidth: 100, maxWidth: 140),
                 child: DropdownButtonFormField<int?>(
                   isExpanded: true,
                   initialValue: _selectedTruckId,
                   decoration: InputDecoration(
                     labelText: 'Truck',
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10),
                   ),
                   items: [
-                    const DropdownMenuItem(value: null, child: Text('All Trucks')),
-                    ..._trucks.map((t) => DropdownMenuItem(value: t.id, child: Text(t.truckNumber))),
+                    const DropdownMenuItem(value: null, child: Text('All')),
+                    ..._trucks.map((t) => DropdownMenuItem(value: t.id, child: Text(t.truckNumber, overflow: TextOverflow.ellipsis))),
                   ],
                   onChanged: (val) {
                     setState(() => _selectedTruckId = val);
@@ -223,14 +224,14 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                 ),
               ),
               ConstrainedBox(
-                constraints: const BoxConstraints(minWidth: 120, maxWidth: 150),
+                constraints: const BoxConstraints(minWidth: 100, maxWidth: 140),
                 child: DropdownButtonFormField<String>(
                   isExpanded: true,
                   initialValue: _selectedType,
                   decoration: InputDecoration(
                     labelText: 'Type',
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10),
                   ),
                   items: _types.map((t) => DropdownMenuItem(value: t, child: Text(t, overflow: TextOverflow.ellipsis))).toList(),
                   onChanged: (val) {
@@ -241,13 +242,17 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
               ),
               IconButton.filledTonal(
                 onPressed: _selectDateRange,
-                icon: const Icon(Icons.date_range),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                icon: const Icon(Icons.date_range, size: 20),
                 tooltip: 'Filter by Date',
               ),
               if (_selectedTruckId != null || _selectedType != 'All' || _startDate != null || _searchController.text.isNotEmpty)
                 IconButton.outlined(
                   onPressed: _clearFilters,
-                  icon: const Icon(Icons.clear_all),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                  icon: const Icon(Icons.clear_all, size: 20),
                   tooltip: 'Clear Filters',
                 ),
             ],
@@ -355,22 +360,22 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                     ),
                   ),
                   SizedBox(
-                    width: 110,
+                    width: 100,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          '₹${entry.amount.toStringAsFixed(2)}',
+                          '₹${entry.amount.toStringAsFixed(0)}',
                           style: TextStyle(
                             color: Theme.of(context).colorScheme.primary,
                             fontWeight: FontWeight.bold,
-                            fontSize: 18,
+                            fontSize: 16,
                           ),
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.right,
                         ),
                         PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_vert, color: Colors.grey),
+                          icon: const Icon(Icons.more_vert, color: Colors.grey, size: 20),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                           onSelected: (value) {
@@ -428,14 +433,14 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
   }
 
   Widget _buildMiniInfo(IconData icon, String text) {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 150),
+    return SizedBox(
+      width: 130,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 14, color: Colors.grey),
           const SizedBox(width: 4),
-          Flexible(
+          Expanded(
             child: Text(
               text,
               style: const TextStyle(fontSize: 12, color: Colors.black87),

@@ -164,10 +164,6 @@ class _TruckMasterScreenState extends State<TruckMasterScreen> {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (truck.registrationNumber != null && truck.registrationNumber!.isNotEmpty)
-              Text('Reg No: ${truck.registrationNumber}'),
-            if (truck.vehicleType != null && truck.vehicleType!.isNotEmpty)
-              Text('Type: ${truck.vehicleType}'),
             const SizedBox(height: 4),
             _statusBadge(truck.status),
           ],

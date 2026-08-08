@@ -14,9 +14,7 @@ class AddEditTruckScreen extends StatefulWidget {
 class _AddEditTruckScreenState extends State<AddEditTruckScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _truckNumberController;
-  late TextEditingController _registrationNumberController;
   late TextEditingController _vehicleTypeController;
-  late TextEditingController _makeController;
   late TextEditingController _modelController;
   late TextEditingController _ownerNameController;
   late TextEditingController _remarksController;
@@ -27,11 +25,8 @@ class _AddEditTruckScreenState extends State<AddEditTruckScreen> {
     super.initState();
     _truckNumberController =
         TextEditingController(text: widget.truck?.truckNumber ?? '');
-    _registrationNumberController =
-        TextEditingController(text: widget.truck?.registrationNumber ?? '');
     _vehicleTypeController =
         TextEditingController(text: widget.truck?.vehicleType ?? '');
-    _makeController = TextEditingController(text: widget.truck?.make ?? '');
     _modelController = TextEditingController(text: widget.truck?.model ?? '');
     _ownerNameController =
         TextEditingController(text: widget.truck?.ownerName ?? '');
@@ -42,9 +37,7 @@ class _AddEditTruckScreenState extends State<AddEditTruckScreen> {
   @override
   void dispose() {
     _truckNumberController.dispose();
-    _registrationNumberController.dispose();
     _vehicleTypeController.dispose();
-    _makeController.dispose();
     _modelController.dispose();
     _ownerNameController.dispose();
     _remarksController.dispose();
@@ -57,9 +50,9 @@ class _AddEditTruckScreenState extends State<AddEditTruckScreen> {
     final truck = Truck(
       id: widget.truck?.id,
       truckNumber: _truckNumberController.text.trim().toUpperCase(),
-      registrationNumber: _registrationNumberController.text.trim().toUpperCase(),
+      registrationNumber: widget.truck?.registrationNumber,
       vehicleType: _vehicleTypeController.text.trim(),
-      make: _makeController.text.trim(),
+      make: widget.truck?.make,
       model: _modelController.text.trim(),
       ownerName: _ownerNameController.text.trim(),
       status: _status,
@@ -111,15 +104,6 @@ class _AddEditTruckScreenState extends State<AddEditTruckScreen> {
               ),
               const SizedBox(height: 16),
               TextFormField(
-                controller: _registrationNumberController,
-                decoration: const InputDecoration(
-                  labelText: 'Registration Number',
-                  border: OutlineInputBorder(),
-                ),
-                textCapitalization: TextCapitalization.characters,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
                 controller: _vehicleTypeController,
                 decoration: const InputDecoration(
                   labelText: 'Vehicle Type',
@@ -127,28 +111,12 @@ class _AddEditTruckScreenState extends State<AddEditTruckScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _makeController,
-                      decoration: const InputDecoration(
-                        labelText: 'Make',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _modelController,
-                      decoration: const InputDecoration(
-                        labelText: 'Model',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                ],
+              TextFormField(
+                controller: _modelController,
+                decoration: const InputDecoration(
+                  labelText: 'Model',
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: 16),
               TextFormField(
