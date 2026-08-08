@@ -7,6 +7,7 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import '../models/report_summary.dart';
 import '../models/company_profile.dart';
 import '../services/company_service.dart';
 
@@ -147,6 +148,170 @@ class PdfService {
       debugPrint("PDF Save Error: $e");
       return null;
     }
+  }
+
+  static Future<String?> generateOperatingCostReport({
+    required ReportSummary summary,
+  }) async {
+    final pdf = pw.Document();
+    final dateFormat = DateFormat('yyyy-MM-dd');
+    final dateTimeFormat = DateFormat('yyyy-MM-dd HH:mm');
+    final unicodeFont = await _loadUnicodeFont();
+    final generatedOn = dateTimeFormat.format(DateTime.now());
+    final companyProfile = await CompanyService.instance.getCompany();
+    final logoImage = await _loadLogoImage(companyProfile.logoPath);
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(18),
+        build: (pw.Context context) {
+          return [
+            _buildHeader(logoImage, unicodeFont, companyProfile),
+            pw.SizedBox(height: 12),
+            pw.Center(
+              child: pw.Text(
+                "FLEET OPERATING COST REPORT",
+                style: pw.TextStyle(
+                  font: unicodeFont,
+                  fontSize: 16,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColor.fromInt(0xFF2E7D32),
+                ),
+              ),
+            ),
+            pw.SizedBox(height: 8),
+            pw.Center(
+              child: pw.Text(
+                "Period: ${dateFormat.format(summary.startDate)} to ${dateFormat.format(summary.endDate)}",
+                style: pw.TextStyle(font: unicodeFont, fontSize: 10),
+              ),
+            ),
+            pw.SizedBox(height: 14),
+            _buildOperatingSummarySection(summary, unicodeFont),
+            pw.SizedBox(height: 14),
+            pw.Text(
+              "TRUCK-WISE BREAKDOWN",
+              style: pw.TextStyle(
+                font: unicodeFont,
+                fontSize: 12,
+                fontWeight: pw.FontWeight.bold,
+              ),
+            ),
+            pw.SizedBox(height: 8),
+            _buildTruckCostTable(summary.truckCosts, unicodeFont),
+          ];
+        },
+        footer: (pw.Context context) {
+          return _buildFooter(context, generatedOn, unicodeFont, companyProfile);
+        },
+      ),
+    );
+
+    try {
+      final bytes = await pdf.save();
+      final directory = await getTemporaryDirectory();
+      final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final filePath = path.join(
+        directory.path,
+        'operating_report_$timestamp.pdf',
+      );
+      final file = File(filePath);
+      await file.writeAsBytes(bytes, flush: true);
+      return file.path;
+    } catch (e) {
+      debugPrint("PDF Save Error: $e");
+      return null;
+    }
+  }
+
+  static pw.Widget _buildOperatingSummarySection(ReportSummary summary, pw.Font? font) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(12),
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(width: 0.6, color: PdfColor.fromInt(0xFFD6D6D6)),
+      ),
+      child: pw.Column(
+        children: [
+          _buildSummaryRow("General Expenses", _formatCurrency(summary.expenseTotal), font),
+          _buildSummaryRow("Fuel Cost", _formatCurrency(summary.fuelTotal), font),
+          _buildSummaryRow("Maintenance Cost", _formatCurrency(summary.maintenanceTotal), font),
+          pw.Divider(thickness: 0.5, color: PdfColor.fromInt(0xFFD6D6D6)),
+          _buildSummaryRow("TOTAL OPERATING COST", _formatCurrency(summary.operatingCostTotal), font, isBold: true),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _buildSummaryRow(String label, String value, pw.Font? font, {bool isBold = false}) {
+    final style = pw.TextStyle(
+      font: font,
+      fontSize: 10,
+      fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
+    );
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 2),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Text(label, style: style),
+          pw.Text(value, style: style),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _buildTruckCostTable(List<TruckCostSummary> costs, pw.Font? font) {
+    final headers = ['Truck No.', 'Expenses', 'Fuel', 'Maint.', 'Total'];
+    final data = costs.map((c) => [
+      c.truckNumber,
+      _formatCurrency(c.expenseTotal),
+      _formatCurrency(c.fuelTotal),
+      _formatCurrency(c.maintenanceTotal),
+      _formatCurrency(c.operatingCostTotal),
+    ]).toList();
+
+    return pw.TableHelper.fromTextArray(
+      headers: headers,
+      data: data,
+      border: pw.TableBorder.all(width: 0.5, color: PdfColor.fromInt(0xFFD6D6D6)),
+      headerStyle: pw.TextStyle(font: font, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+      headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF2E7D32)),
+      cellStyle: pw.TextStyle(font: font, fontSize: 9),
+      cellAlignment: pw.Alignment.centerRight,
+      columnWidths: {
+        0: const pw.FlexColumnWidth(2),
+        1: const pw.FlexColumnWidth(2),
+        2: const pw.FlexColumnWidth(2),
+        3: const pw.FlexColumnWidth(2),
+        4: const pw.FlexColumnWidth(2),
+      },
+      headerAlignment: pw.Alignment.center,
+    );
+  }
+
+  static pw.Widget _buildFooter(pw.Context context, String generatedOn, pw.Font? font, CompanyProfile profile) {
+    return pw.Container(
+      margin: const pw.EdgeInsets.only(top: 8),
+      decoration: const pw.BoxDecoration(
+        border: pw.Border(top: pw.BorderSide(color: PdfColor.fromInt(0xFFD6D6D6), width: 0.6)),
+      ),
+      padding: const pw.EdgeInsets.only(top: 6),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text('Generated by', style: pw.TextStyle(font: font, fontSize: 8, color: PdfColors.grey700)),
+              pw.Text(profile.companyName, style: pw.TextStyle(font: font, fontSize: 8, color: PdfColors.grey700)),
+            ],
+          ),
+          pw.Text(generatedOn, style: pw.TextStyle(font: font, fontSize: 8, color: PdfColors.grey700)),
+          pw.Text('Page ${context.pageNumber} of ${context.pagesCount}', style: pw.TextStyle(font: font, fontSize: 8, color: PdfColors.grey700)),
+        ],
+      ),
+    );
   }
 
   static pw.Widget _buildHeader(

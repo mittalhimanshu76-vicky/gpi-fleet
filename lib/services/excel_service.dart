@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
+import '../models/report_summary.dart';
 import '../services/company_service.dart';
 
 class ExcelService {
@@ -222,6 +223,84 @@ class ExcelService {
       debugPrint("Excel Export Error: $e");
       debugPrint(stackTrace.toString());
       rethrow;
+    }
+  }
+
+  static Future<String?> exportOperatingCostReport({
+    required ReportSummary summary,
+  }) async {
+    try {
+      final excel = Excel.createExcel();
+      final sheet = excel['Fleet Operating Report'];
+      final dateFormat = DateFormat('yyyy-MM-dd');
+      final dateTimeFormat = DateFormat('yyyy-MM-dd HH:mm');
+      final generatedOn = dateTimeFormat.format(DateTime.now());
+      final companyProfile = await CompanyService.instance.getCompany();
+      final companyName = companyProfile.companyName.toUpperCase();
+      final title = 'FLEET OPERATING COST REPORT';
+      final headers = ['Truck No.', 'Expenses', 'Fuel', 'Maint.', 'Total Cost'];
+
+      final companyStyle = _baseStyle(bold: true, fontSize: 13, colorHex: 'FF2E7D32', horizontalAlignment: HorizontalAlign.Center);
+      final titleStyle = _baseStyle(bold: true, fontSize: 16, colorHex: 'FF2E7D32', horizontalAlignment: HorizontalAlign.Center);
+      final detailStyle = _baseStyle(fontSize: 10, horizontalAlignment: HorizontalAlign.Left);
+      final headerStyle = _baseStyle(bold: true, fontSize: 11, colorHex: 'FFFFFFFF', backgroundColorHex: 'FF2E7D32', horizontalAlignment: HorizontalAlign.Center);
+      final bodyStyle = _baseStyle(fontSize: 10, horizontalAlignment: HorizontalAlign.Left);
+      final amountStyle = _baseStyle(fontSize: 10, horizontalAlignment: HorizontalAlign.Right);
+
+      _setCell(sheet, 0, 0, companyName, style: companyStyle);
+      sheet.merge(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0), CellIndex.indexByColumnRow(columnIndex: headers.length - 1, rowIndex: 0));
+
+      _setCell(sheet, 1, 0, title, style: titleStyle);
+      sheet.merge(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 1), CellIndex.indexByColumnRow(columnIndex: headers.length - 1, rowIndex: 1));
+
+      _setCell(sheet, 3, 0, 'Period: ${dateFormat.format(summary.startDate)} to ${dateFormat.format(summary.endDate)}', style: detailStyle);
+      _setCell(sheet, 4, 0, 'Generated On: $generatedOn', style: detailStyle);
+
+      // Summary Section in Excel
+      int summaryRow = 6;
+      _setCell(sheet, summaryRow, 0, 'SUMMARY', style: _baseStyle(bold: true));
+      _setCell(sheet, summaryRow + 1, 0, 'General Expenses');
+      _setCell(sheet, summaryRow + 1, 1, summary.expenseTotal, style: amountStyle);
+      _setCell(sheet, summaryRow + 2, 0, 'Fuel Cost');
+      _setCell(sheet, summaryRow + 2, 1, summary.fuelTotal, style: amountStyle);
+      _setCell(sheet, summaryRow + 3, 0, 'Maintenance Cost');
+      _setCell(sheet, summaryRow + 3, 1, summary.maintenanceTotal, style: amountStyle);
+      _setCell(sheet, summaryRow + 4, 0, 'TOTAL OPERATING COST', style: _baseStyle(bold: true));
+      _setCell(sheet, summaryRow + 4, 1, summary.operatingCostTotal, style: amountStyle.copyWith(boldVal: true));
+
+      // Table Header
+      int tableHeaderRow = 12;
+      for (var i = 0; i < headers.length; i++) {
+        _setCell(sheet, tableHeaderRow, i, headers[i], style: headerStyle);
+      }
+
+      // Table Data
+      for (var i = 0; i < summary.truckCosts.length; i++) {
+        final tc = summary.truckCosts[i];
+        final row = tableHeaderRow + 1 + i;
+        final style = i % 2 == 0 ? bodyStyle : bodyStyle.copyWith(backgroundColorHexVal: 'FFF5F5F5');
+        final amtStyle = i % 2 == 0 ? amountStyle : amountStyle.copyWith(backgroundColorHexVal: 'FFF5F5F5');
+
+        _setCell(sheet, row, 0, tc.truckNumber, style: style);
+        _setCell(sheet, row, 1, tc.expenseTotal, style: amtStyle);
+        _setCell(sheet, row, 2, tc.fuelTotal, style: amtStyle);
+        _setCell(sheet, row, 3, tc.maintenanceTotal, style: amtStyle);
+        _setCell(sheet, row, 4, tc.operatingCostTotal, style: amtStyle.copyWith(boldVal: true));
+      }
+
+      final downloadsDir = await getDownloadsDirectory();
+      final documentsDir = await getApplicationDocumentsDirectory();
+      final targetDir = downloadsDir ?? documentsDir;
+      final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final filePath = path.join(targetDir.path, 'operating_report_$timestamp.xlsx');
+      final file = File(filePath);
+      final bytes = excel.save();
+      if (bytes == null) return null;
+      await file.writeAsBytes(bytes, flush: true);
+      return file.path;
+    } catch (e) {
+      debugPrint("Excel Export Error: $e");
+      return null;
     }
   }
 

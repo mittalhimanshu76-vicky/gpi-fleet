@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/report_summary.dart';
 import '../services/reports_service.dart';
+import '../services/pdf_service.dart';
+import '../services/excel_service.dart';
+import '../services/share_service.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -14,6 +17,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
   DateTime _startDate = DateTime(DateTime.now().year, DateTime.now().month, 1);
   DateTime _endDate = DateTime.now();
   late Future<ReportSummary> _reportFuture;
+  bool _isExporting = false;
+  ReportSummary? _lastReport;
 
   @override
   void initState() {
@@ -99,6 +104,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 }
 
                 final report = snapshot.data!;
+                _lastReport = report;
+
                 if (report.truckCosts.isEmpty) {
                   return const Center(child: Text('No transactions found for this period.'));
                 }
@@ -111,6 +118,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildSummaryCards(report),
+                        const SizedBox(height: 16),
+                        _buildExportSection(),
                         const SizedBox(height: 24),
                         const Text(
                           'Truck-wise Breakdown',
@@ -272,6 +281,108 @@ class _ReportsScreenState extends State<ReportsScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildExportSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Export Report',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            _buildExportButton(
+              icon: Icons.picture_as_pdf,
+              label: 'PDF',
+              color: Colors.red.shade700,
+              onTap: () => _handleExport('pdf'),
+            ),
+            const SizedBox(width: 8),
+            _buildExportButton(
+              icon: Icons.table_chart,
+              label: 'Excel',
+              color: Colors.green.shade700,
+              onTap: () => _handleExport('excel'),
+            ),
+            const SizedBox(width: 8),
+            _buildExportButton(
+              icon: Icons.share,
+              label: 'Share',
+              color: Colors.blue.shade700,
+              onTap: () => _handleExport('share'),
+            ),
+          ],
+        ),
+        if (_isExporting)
+          const Padding(
+            padding: EdgeInsets.only(top: 12),
+            child: LinearProgressIndicator(),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildExportButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: OutlinedButton.icon(
+        onPressed: _isExporting ? null : onTap,
+        icon: Icon(icon, size: 18, color: color),
+        label: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+        style: OutlinedButton.styleFrom(
+          side: BorderSide(color: color.withAlpha(128)),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleExport(String type) async {
+    if (_lastReport == null || _isExporting) return;
+
+    setState(() => _isExporting = true);
+    String? filePath;
+    String message = '';
+
+    try {
+      if (type == 'pdf') {
+        filePath = await PdfService.generateOperatingCostReport(summary: _lastReport!);
+        message = 'PDF report generated successfully.';
+      } else if (type == 'excel') {
+        filePath = await ExcelService.exportOperatingCostReport(summary: _lastReport!);
+        message = 'Excel report generated successfully.';
+      } else if (type == 'share') {
+        // Default to PDF for direct share
+        filePath = await PdfService.generateOperatingCostReport(summary: _lastReport!);
+      }
+
+      if (filePath != null) {
+        if (type == 'share') {
+          await ShareService.shareFile(filePath);
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+            await ShareService.shareFile(filePath);
+          }
+        }
+      } else {
+        throw Exception('File generation failed.');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
   }
 
   Widget _buildSmallInfo(String text) {
