@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 10,
+      version: 11,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -109,6 +109,26 @@ class DatabaseHelper {
         remarks TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT,
+        FOREIGN KEY (truck_id) REFERENCES trucks (id)
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE maintenance_entries(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        truck_id INTEGER NOT NULL,
+        date TEXT NOT NULL,
+        maintenance_type TEXT NOT NULL,
+        description TEXT,
+        odometer REAL,
+        amount REAL NOT NULL,
+        service_provider TEXT,
+        next_service_date TEXT,
+        next_service_odometer REAL,
+        payment_mode TEXT,
+        remarks TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
         FOREIGN KEY (truck_id) REFERENCES trucks (id)
       )
     ''');
@@ -308,8 +328,27 @@ class DatabaseHelper {
       }
     }
 
+    if (oldVersion < 9) {
+      await db.execute('''
+        CREATE TABLE fuel_entries(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          truck_id INTEGER NOT NULL,
+          date TEXT NOT NULL,
+          odometer REAL,
+          liters REAL NOT NULL,
+          rate_per_liter REAL,
+          total_amount REAL NOT NULL,
+          fuel_station TEXT,
+          payment_mode TEXT,
+          remarks TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT,
+          FOREIGN KEY (truck_id) REFERENCES trucks (id)
+        )
+      ''');
+    }
+
     if (oldVersion < 10) {
-      // Re-create or create fuel_entries with correct NOT NULL constraint
       await db.execute("DROP TABLE IF EXISTS fuel_entries");
       await db.execute('''
         CREATE TABLE fuel_entries(
@@ -328,6 +367,29 @@ class DatabaseHelper {
           FOREIGN KEY (truck_id) REFERENCES trucks (id)
         )
       ''');
+    }
+
+    if (oldVersion < 11) {
+      await db.execute('''
+        CREATE TABLE maintenance_entries(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          truck_id INTEGER NOT NULL,
+          date TEXT NOT NULL,
+          maintenance_type TEXT NOT NULL,
+          description TEXT,
+          odometer REAL,
+          amount REAL NOT NULL,
+          service_provider TEXT,
+          next_service_date TEXT,
+          next_service_odometer REAL,
+          payment_mode TEXT,
+          remarks TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (truck_id) REFERENCES trucks (id)
+        )
+      ''');
+
     }
   }
 
@@ -540,6 +602,93 @@ class DatabaseHelper {
     return db.rawQuery('''
       SELECT strftime('%Y-%m', date) as month, SUM(total_amount) as total
       FROM fuel_entries
+      GROUP BY month
+      ORDER BY month DESC
+    ''');
+  }
+
+  //---------------- MAINTENANCE ENTRIES ----------------//
+
+  Future<int> insertMaintenanceEntry(Map<String, dynamic> entry) async {
+    final db = await database;
+    final now = DateTime.now().toIso8601String();
+    entry['created_at'] = now;
+    entry['updated_at'] = now;
+    return db.insert("maintenance_entries", entry);
+  }
+
+  Future<int> updateMaintenanceEntryRecord(int id, Map<String, dynamic> entry) async {
+    final db = await database;
+    entry['updated_at'] = DateTime.now().toIso8601String();
+    return db.update("maintenance_entries", entry, where: "id=?", whereArgs: [id]);
+  }
+
+  Future<int> deleteMaintenanceEntryRecord(int id) async {
+    final db = await database;
+    return db.delete("maintenance_entries", where: "id=?", whereArgs: [id]);
+  }
+
+  Future<Map<String, dynamic>?> queryMaintenanceEntry(int id) async {
+    final db = await database;
+    final result = await db.rawQuery('''
+      SELECT m.*, t.truck_number
+      FROM maintenance_entries m
+      LEFT JOIN trucks t ON m.truck_id = t.id
+      WHERE m.id = ?
+    ''', [id]);
+    return result.isNotEmpty ? result.first : null;
+  }
+
+  Future<List<Map<String, dynamic>>> queryMaintenanceEntries({
+    int? truckId,
+    String? startDate,
+    String? endDate,
+    String? type,
+    String? searchTerm,
+  }) async {
+    final db = await database;
+    String where = "";
+    List<dynamic> whereArgs = [];
+
+    if (truckId != null) {
+      where = "m.truck_id = ?";
+      whereArgs.add(truckId);
+    }
+
+    if (startDate != null && endDate != null) {
+      if (where.isNotEmpty) where += " AND ";
+      where += "m.date BETWEEN ? AND ?";
+      whereArgs.addAll([startDate, endDate]);
+    }
+
+    if (type != null && type != 'All') {
+      if (where.isNotEmpty) where += " AND ";
+      where += "m.maintenance_type = ?";
+      whereArgs.add(type);
+    }
+
+    if (searchTerm != null && searchTerm.isNotEmpty) {
+      if (where.isNotEmpty) where += " AND ";
+      where += "(t.truck_number LIKE ? OR m.description LIKE ? OR m.service_provider LIKE ? OR m.remarks LIKE ?)";
+      whereArgs.addAll(["%$searchTerm%", "%$searchTerm%", "%$searchTerm%", "%$searchTerm%"]);
+    }
+
+    final query = '''
+      SELECT m.*, t.truck_number
+      FROM maintenance_entries m
+      LEFT JOIN trucks t ON m.truck_id = t.id
+      ${where.isNotEmpty ? "WHERE $where" : ""}
+      ORDER BY m.date DESC, m.id DESC
+    ''';
+
+    return db.rawQuery(query, whereArgs);
+  }
+
+  Future<List<Map<String, dynamic>>> queryMaintenanceSummary() async {
+    final db = await database;
+    return db.rawQuery('''
+      SELECT strftime('%Y-%m', date) as month, SUM(amount) as total
+      FROM maintenance_entries
       GROUP BY month
       ORDER BY month DESC
     ''');

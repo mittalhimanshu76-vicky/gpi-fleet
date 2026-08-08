@@ -7,6 +7,7 @@ import 'masters_screen.dart';
 import 'truck_master_screen.dart';
 import 'driver_master_screen.dart';
 import 'fuel_screen.dart';
+import 'maintenance_screen.dart';
 import 'more_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -109,6 +110,12 @@ class _HomeScreenState extends State<HomeScreen> {
               'Expense History',
               Colors.green,
               () => openScreen(const ExpenseHistoryScreen()),
+            ),
+            menuButton(
+              Icons.build,
+              'Maintenance',
+              Colors.brown,
+              () => openScreen(const MaintenanceScreen()),
             ),
             menuButton(
               Icons.local_gas_station,
