@@ -27,6 +27,7 @@ class ReportsService {
       final exp = (row['expense_total'] as num).toDouble();
       final fuel = (row['fuel_total'] as num).toDouble();
       final maint = (row['maintenance_total'] as num).toDouble();
+      final mCount = (row['maintenance_count'] as num).toInt();
       final operating = exp + fuel + maint;
 
       totalExp += exp;
@@ -40,6 +41,7 @@ class ReportsService {
         fuelTotal: fuel,
         maintenanceTotal: maint,
         operatingCostTotal: operating,
+        maintenanceCount: mCount,
       );
     }).toList();
 

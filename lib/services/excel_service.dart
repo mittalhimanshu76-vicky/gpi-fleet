@@ -237,7 +237,9 @@ class ExcelService {
       final generatedOn = dateTimeFormat.format(DateTime.now());
       final companyProfile = await CompanyService.instance.getCompany();
       final companyName = companyProfile.companyName.toUpperCase();
-      final title = 'FLEET OPERATING COST REPORT';
+      final title = summary.truckCosts.length == 1
+          ? 'TRUCK OPERATING COST REPORT: ${summary.truckCosts.first.truckNumber}'
+          : 'FLEET OPERATING COST REPORT';
       final headers = ['Truck No.', 'Expenses', 'Fuel', 'Maint.', 'Total Cost'];
 
       final companyStyle = _baseStyle(bold: true, fontSize: 13, colorHex: 'FF2E7D32', horizontalAlignment: HorizontalAlign.Center);

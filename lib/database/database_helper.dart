@@ -761,7 +761,8 @@ class DatabaseHelper {
         t.truck_number,
         COALESCE(exp.total, 0) as expense_total,
         COALESCE(fuel.total, 0) as fuel_total,
-        COALESCE(maint.total, 0) as maintenance_total
+        COALESCE(maint.total, 0) as maintenance_total,
+        COALESCE(maint.m_count, 0) as maintenance_count
       FROM trucks t
       LEFT JOIN (
         SELECT truck_id, SUM(amount) as total 
@@ -776,7 +777,7 @@ class DatabaseHelper {
         GROUP BY truck_id
       ) fuel ON t.id = fuel.truck_id
       LEFT JOIN (
-        SELECT truck_id, SUM(amount) as total 
+        SELECT truck_id, SUM(amount) as total, COUNT(*) as m_count
         FROM maintenance_entries 
         WHERE date BETWEEN ? AND ? 
         GROUP BY truck_id

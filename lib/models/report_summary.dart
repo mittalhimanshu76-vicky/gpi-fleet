@@ -45,6 +45,7 @@ class TruckCostSummary {
   final double fuelTotal;
   final double maintenanceTotal;
   final double operatingCostTotal;
+  final int maintenanceCount;
 
   TruckCostSummary({
     required this.truckId,
@@ -53,6 +54,7 @@ class TruckCostSummary {
     required this.fuelTotal,
     required this.maintenanceTotal,
     required this.operatingCostTotal,
+    required this.maintenanceCount,
   });
 
   TruckCostSummary copyWith({
@@ -62,6 +64,7 @@ class TruckCostSummary {
     double? fuelTotal,
     double? maintenanceTotal,
     double? operatingCostTotal,
+    int? maintenanceCount,
   }) {
     return TruckCostSummary(
       truckId: truckId ?? this.truckId,
@@ -70,6 +73,7 @@ class TruckCostSummary {
       fuelTotal: fuelTotal ?? this.fuelTotal,
       maintenanceTotal: maintenanceTotal ?? this.maintenanceTotal,
       operatingCostTotal: operatingCostTotal ?? this.operatingCostTotal,
+      maintenanceCount: maintenanceCount ?? this.maintenanceCount,
     );
   }
 }

@@ -171,7 +171,9 @@ class PdfService {
             pw.SizedBox(height: 12),
             pw.Center(
               child: pw.Text(
-                "FLEET OPERATING COST REPORT",
+                summary.truckCosts.length == 1
+                  ? "TRUCK OPERATING COST REPORT: ${summary.truckCosts.first.truckNumber}"
+                  : "FLEET OPERATING COST REPORT",
                 style: pw.TextStyle(
                   font: unicodeFont,
                   fontSize: 16,

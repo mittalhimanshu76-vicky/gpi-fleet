@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../models/truck.dart';
 import '../models/report_summary.dart';
 import '../services/reports_service.dart';
+import '../services/truck_service.dart';
 import '../services/pdf_service.dart';
 import '../services/excel_service.dart';
 import '../services/share_service.dart';
@@ -16,6 +18,8 @@ class ReportsScreen extends StatefulWidget {
 class _ReportsScreenState extends State<ReportsScreen> {
   DateTime _startDate = DateTime(DateTime.now().year, DateTime.now().month, 1);
   DateTime _endDate = DateTime.now();
+  int? _selectedTruckId;
+  List<Truck> _trucks = [];
   late Future<ReportSummary> _reportFuture;
   bool _isExporting = false;
   ReportSummary? _lastReport;
@@ -23,6 +27,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   void initState() {
     super.initState();
+    _loadInitialData();
+  }
+
+  Future<void> _loadInitialData() async {
+    final trucks = await TruckService.instance.getAllTrucks();
+    setState(() {
+      _trucks = trucks;
+    });
     _loadReport();
   }
 
@@ -104,9 +116,40 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 }
 
                 final report = snapshot.data!;
-                _lastReport = report;
 
-                if (report.truckCosts.isEmpty) {
+                // Apply truck filter if selected
+                ReportSummary displayReport = report;
+                TruckCostSummary? selectedTruckSummary;
+
+                if (_selectedTruckId != null) {
+                  try {
+                    selectedTruckSummary = report.truckCosts.firstWhere((tc) => tc.truckId == _selectedTruckId);
+                    displayReport = ReportSummary(
+                      startDate: report.startDate,
+                      endDate: report.endDate,
+                      expenseTotal: selectedTruckSummary.expenseTotal,
+                      fuelTotal: selectedTruckSummary.fuelTotal,
+                      maintenanceTotal: selectedTruckSummary.maintenanceTotal,
+                      operatingCostTotal: selectedTruckSummary.operatingCostTotal,
+                      truckCosts: [selectedTruckSummary],
+                    );
+                  } catch (_) {
+                    // Selected truck has no data in this period
+                    displayReport = ReportSummary(
+                      startDate: report.startDate,
+                      endDate: report.endDate,
+                      expenseTotal: 0,
+                      fuelTotal: 0,
+                      maintenanceTotal: 0,
+                      operatingCostTotal: 0,
+                      truckCosts: [],
+                    );
+                  }
+                }
+
+                _lastReport = displayReport;
+
+                if (displayReport.truckCosts.isEmpty && _selectedTruckId == null) {
                   return const Center(child: Text('No transactions found for this period.'));
                 }
 
@@ -117,16 +160,19 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildSummaryCards(report),
+                        _buildSummaryCards(displayReport, selectedTruckSummary),
                         const SizedBox(height: 16),
                         _buildExportSection(),
                         const SizedBox(height: 24),
-                        const Text(
-                          'Truck-wise Breakdown',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        Text(
+                          _selectedTruckId == null ? 'Truck-wise Breakdown' : 'Operating Details',
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 12),
-                        ...report.truckCosts.map((tc) => _buildTruckCostCard(tc)),
+                        if (displayReport.truckCosts.isEmpty)
+                          const Center(child: Text('No transactions for this truck in this period.'))
+                        else
+                          ...displayReport.truckCosts.map((tc) => _buildTruckCostCard(tc)),
                         const SizedBox(height: 80),
                       ],
                     ),
@@ -147,6 +193,25 @@ class _ReportsScreenState extends State<ReportsScreen> {
       color: Theme.of(context).colorScheme.surface.withAlpha(25),
       child: Column(
         children: [
+          DropdownButtonFormField<int?>(
+            isExpanded: true,
+            initialValue: _selectedTruckId,
+            decoration: InputDecoration(
+              labelText: 'Select Truck',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              prefixIcon: const Icon(Icons.local_shipping),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+            ),
+            items: [
+              const DropdownMenuItem(value: null, child: Text('All Trucks')),
+              ..._trucks.map((t) => DropdownMenuItem(value: t.id, child: Text(t.truckNumber))),
+            ],
+            onChanged: (val) {
+              setState(() => _selectedTruckId = val);
+              _loadReport();
+            },
+          ),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
@@ -186,7 +251,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  Widget _buildSummaryCards(ReportSummary report) {
+  Widget _buildSummaryCards(ReportSummary report, [TruckCostSummary? selectedTruck]) {
     return Column(
       children: [
         Row(
@@ -199,11 +264,47 @@ class _ReportsScreenState extends State<ReportsScreen> {
         const SizedBox(height: 12),
         Row(
           children: [
-            _buildStatCard('Maintenance', report.maintenanceTotal, Colors.brown),
+            _buildStatCard(
+              selectedTruck != null ? 'Maintenance Cost' : 'Maintenance',
+              report.maintenanceTotal,
+              Colors.brown,
+            ),
             const SizedBox(width: 12),
             _buildStatCard('Total Cost', report.operatingCostTotal, Colors.green, isPrimary: true),
           ],
         ),
+        if (selectedTruck != null) ...[
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Card(
+                  elevation: 1,
+                  color: Colors.brown.withAlpha(20),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Maintenance Events',
+                          style: TextStyle(fontSize: 12, color: Colors.black87, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${selectedTruck.maintenanceCount}',
+                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.brown),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const Spacer(),
+            ],
+          ),
+        ],
       ],
     );
   }
