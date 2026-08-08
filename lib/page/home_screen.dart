@@ -9,6 +9,7 @@ import 'truck_master_screen.dart';
 import 'driver_master_screen.dart';
 import 'fuel_screen.dart';
 import 'maintenance_screen.dart';
+import 'reports_screen.dart';
 import 'more_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -437,6 +438,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _buildNavButton(Icons.person, 'Drivers', Colors.teal, () => openScreen(const DriverMasterScreen())),
         _buildNavButton(Icons.local_shipping, 'Trucks', Colors.indigo, () => openScreen(const TruckMasterScreen())),
         _buildNavButton(Icons.settings, 'Masters', Colors.purple, () => openScreen(const MastersScreen())),
+        _buildNavButton(Icons.analytics, 'Reports', Colors.deepPurple, () => openScreen(const ReportsScreen())),
         _buildNavButton(Icons.more_horiz, 'More', Colors.blueGrey, () => openScreen(const MoreScreen())),
       ],
     );
